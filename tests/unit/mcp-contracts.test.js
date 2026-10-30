@@ -89,7 +89,7 @@ afterEach(() => {
 // --- Schema sanity ----------------------------------------------------------
 describe('TOOL_DEFS', () => {
   test('exposes exactly 25 tools', () => {
-    expect(TOOL_DEFS).toHaveLength(25);
+    expect(TOOL_DEFS).toHaveLength(26);
   });
 
   test('every def has a unique name and a valid JSON-Schema object', () => {
@@ -122,6 +122,7 @@ describe('buildRequest', () => {
     ['bwl_create_profile', { name: 'shop' }, { method: 'POST', path: '/profiles', auth: 'accessKey', kind: 'json' }],
     ['bwl_list_profiles', {}, { method: 'GET', path: '/profiles', auth: 'accessKey', kind: 'json' }],
     ['bwl_delete_profile', { profile: 'a b' }, { method: 'DELETE', path: '/profiles/a%20b', auth: 'accessKey', kind: 'json' }],
+    ['bwl_upload', { tabId: 't1', url: 'http://h/cv.pdf' }, { method: 'POST', path: '/tabs/t1/upload', auth: 'accessKey', kind: 'json' }],
   ])('%s → %s %s (auth=%s)', (name, args, expected) => {
     const spec = buildRequest(name, args, CTX);
     expect(spec.method).toBe(expected.method);

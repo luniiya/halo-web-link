@@ -148,7 +148,8 @@ function log(level, msg, fields = {}) {
 const app = express();
 const globalJsonParser = express.json({ limit: '100kb' });
 app.use((req, res, next) => {
-  if (req.method === 'POST' && /^\/tabs\/[^/]+\/evaluate$/.test(req.path)) {
+  // evaluate and upload declare their own (larger) body limits on the route.
+  if (req.method === 'POST' && /^\/tabs\/[^/]+\/(evaluate|upload)$/.test(req.path)) {
     return next();
   }
   return globalJsonParser(req, res, next);
@@ -233,6 +234,7 @@ app.use(accessKeyMiddleware(CONFIG));
 // session (or read a closed profile tab's history). Requests naming another
 // userId are re-pointed at the owning profile session.
 const evaluateJsonParser = express.json({ limit: CONFIG.evaluateMaxBodySize });
+const uploadJsonParser = express.json({ limit: '40mb' });
 function profileOwnerOfTab(tabId) {
   for (const [userId, session] of sessions) {
     if (session.profileId && findTab(session, tabId)) return userId;
@@ -259,6 +261,8 @@ app.use('/tabs/:tabId', (req, res, next) => {
   // /evaluate skips the global parser for its larger limit; parse it here so
   // the userId can be re-pointed. The route's own parser then sees a consumed body.
   if (req.method === 'POST' && req.body === undefined && req.path === '/evaluate') return evaluateJsonParser(req, res, route);
+  // Same for /upload, whose base64 file bodies need the larger limit.
+  if (req.method === 'POST' && req.body === undefined && req.path === '/upload') return uploadJsonParser(req, res, route);
   route();
 });
 
@@ -5189,6 +5193,100 @@ const UPLOAD_CLICK_TIMEOUT_MS = 4000; // forced click() fallback on the trigger
 const UPLOAD_PANEL_POLL_MS = 500; // interval between panel-input polls
 const UPLOAD_REFS_TIMEOUT_MS = 4000; // refreshTabRefs() before/after the upload
 const UPLOAD_SETTLE_MS = 1500; // let the page process the upload / render a preview
+const UPLOAD_FETCH_TIMEOUT_MS = 60000; // fetching a `url` source server side
+const UPLOAD_MAX_BYTES = 25 * 1024 * 1024; // per file, for `url` and `base64` sources
+const UPLOAD_ANCESTOR_DEPTH = 6; // how far up from a drop zone/button to look for its file input
+
+/** Filename from a Content-Disposition header, if it names one. */
+function contentDispositionFilename(header) {
+  if (!header) return null;
+  const star = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(header);
+  if (star) {
+    try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch { /* fall through */ }
+  }
+  const plain = /filename\s*=\s*("?)([^";]+)\1/i.exec(header);
+  return plain ? plain[2].trim() : null;
+}
+
+function uploadSourceError(message, code, statusCode = 400) {
+  return Object.assign(new Error(message), { statusCode, code });
+}
+
+/**
+ * Turn the request's file source into what Playwright's setInputFiles takes.
+ * Exactly one of `path` (inside BWL_UPLOADS_DIR), `url` (fetched server side)
+ * or `base64` (+ filename) must be given. `url` and `base64` stay in memory:
+ * nothing is written to disk.
+ * Returns { files, info, payloads } where `files` goes to setInputFiles,
+ * `info` is [{ name, size, mimeType }] for the response, and `payloads` holds
+ * the bytes for the drag-and-drop fallback.
+ */
+async function loadUploadSource(body) {
+  const { path: filePath, url, base64 } = body;
+  const given = [filePath, url, base64].filter((v) => v !== undefined && v !== null && v !== '');
+  if (given.length !== 1) {
+    throw uploadSourceError('Give exactly one file source: path, url, or base64 (+ filename)', 'invalid_upload_source');
+  }
+
+  if (filePath) {
+    const paths = await resolveUploadPaths({ uploadsDir: CONFIG.uploadsDir, filePaths: Array.isArray(filePath) ? filePath : [filePath] });
+    const payloads = await Promise.all(paths.map(async (p) => ({
+      name: path.basename(p),
+      mimeType: 'application/octet-stream',
+      buffer: await fs.promises.readFile(p),
+    })));
+    return {
+      files: paths,
+      info: payloads.map((p) => ({ name: p.name, size: p.buffer.length, mimeType: p.mimeType })),
+      payloads,
+    };
+  }
+
+  let payload;
+  if (url) {
+    let parsed;
+    try { parsed = new URL(url); } catch { throw uploadSourceError('url is not a valid URL', 'invalid_upload_url'); }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw uploadSourceError('url must be http(s)', 'invalid_upload_url');
+    }
+    let resp;
+    try {
+      resp = await fetch(parsed, { signal: AbortSignal.timeout(UPLOAD_FETCH_TIMEOUT_MS), redirect: 'follow' });
+    } catch (e) {
+      throw uploadSourceError(`could not fetch url: ${e.message}`, 'upload_fetch_failed', 502);
+    }
+    if (!resp.ok) throw uploadSourceError(`fetching url returned HTTP ${resp.status}`, 'upload_fetch_failed', 502);
+    if (Number(resp.headers.get('content-length')) > UPLOAD_MAX_BYTES) {
+      throw uploadSourceError(`file is larger than ${UPLOAD_MAX_BYTES} bytes`, 'upload_too_large', 413);
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    if (buffer.length > UPLOAD_MAX_BYTES) {
+      throw uploadSourceError(`file is larger than ${UPLOAD_MAX_BYTES} bytes`, 'upload_too_large', 413);
+    }
+    const name = body.filename
+      || contentDispositionFilename(resp.headers.get('content-disposition'))
+      || decodeURIComponent(path.basename(parsed.pathname))
+      || 'upload';
+    const mimeType = body.mimeType
+      || (resp.headers.get('content-type') || '').split(';')[0].trim()
+      || 'application/octet-stream';
+    payload = { name, mimeType, buffer };
+  } else {
+    if (typeof base64 !== 'string') throw uploadSourceError('base64 must be a string', 'invalid_upload_source');
+    if (!body.filename) throw uploadSourceError('filename is required with base64', 'invalid_upload_source');
+    const buffer = Buffer.from(base64.replace(/^data:[^,]*,/, ''), 'base64');
+    if (buffer.length === 0) throw uploadSourceError('base64 decoded to an empty file', 'invalid_upload_source');
+    if (buffer.length > UPLOAD_MAX_BYTES) {
+      throw uploadSourceError(`file is larger than ${UPLOAD_MAX_BYTES} bytes`, 'upload_too_large', 413);
+    }
+    payload = { name: path.basename(body.filename), mimeType: body.mimeType || 'application/octet-stream', buffer };
+  }
+  return {
+    files: [payload],
+    info: [{ name: payload.name, size: payload.buffer.length, mimeType: payload.mimeType }],
+    payloads: [payload],
+  };
+}
 
 // Upload (file attach via filechooser / setInputFiles)
 /**
@@ -5198,16 +5296,20 @@ const UPLOAD_SETTLE_MS = 1500; // let the page process the upload / render a pre
  *     tags: [Interaction]
  *     summary: Attach a file to an upload control
  *     description: >
- *       Attaches files from the configured upload directory without going through
- *       the native OS file dialog. Set BWL_UPLOADS_DIR to a directory that
- *       contains the files (default: ~/.bwl/uploads). Two strategies are
- *       tried in order: (1) if an
- *       <input type="file"> is already present, call Playwright setInputFiles
+ *       Attaches a file without going through the native OS file dialog. The
+ *       file comes from exactly one source: `path` (inside BWL_UPLOADS_DIR,
+ *       default ~/.bwl/uploads), `url` (fetched by the server, so the agent
+ *       never has to inline large files), or `base64` + `filename`. `url` and
+ *       `base64` files stay in memory and are capped at 25 MB. Strategies, in
+ *       order: (0) when a ref/selector is given, use the file input it is,
+ *       labels, contains, or shares a drop zone/section with; (1) if the page
+ *       has a single <input type="file"> (or no trigger was given), set files
  *       on it directly (works for hidden inputs); (2) otherwise arm a
- *       filechooser listener, activate the trigger element (ref or selector)
- *       via keyboard (focus + Enter) then a forced click as fallback, and call
- *       setFiles on the resulting chooser. Each path must be an absolute path
- *       that resolves inside the configured upload directory.
+ *       filechooser listener, activate the trigger via keyboard (focus +
+ *       Enter) then a forced click, and answer the chooser or a freshly
+ *       mounted panel input; (3) as a last resort, drop the file on the
+ *       trigger with a synthetic drag-and-drop. `mode: "drop"` skips straight
+ *       to (3).
  *     parameters:
  *       - name: tabId
  *         in: path
@@ -5219,10 +5321,30 @@ const UPLOAD_SETTLE_MS = 1500; // let the page process the upload / render a pre
  *         application/json:
  *           schema:
  *             type: object
- *             required: [userId, path]
+ *             required: [userId]
  *             properties:
  *               userId:
  *                 type: string
+ *               url:
+ *                 type: string
+ *                 description: "http(s) URL the server downloads the file from (e.g. a LAN file server)."
+ *               base64:
+ *                 type: string
+ *                 description: "File contents, base64 (a data: URL prefix is accepted). Requires filename."
+ *               filename:
+ *                 type: string
+ *                 description: "File name the page sees. Required with base64; overrides the name derived from url."
+ *               mimeType:
+ *                 type: string
+ *                 description: "MIME type the page sees. Defaults to the url's Content-Type, else application/octet-stream."
+ *               nth:
+ *                 type: integer
+ *                 description: "0-based match index when selector matches several elements."
+ *               mode:
+ *                 type: string
+ *                 enum: [auto, drop]
+ *                 default: auto
+ *                 description: "drop dispatches a synthetic drag-and-drop on the ref/selector instead of using a file input."
  *               path:
  *                 description: "Absolute path, or array of paths, that resolves within BWL_UPLOADS_DIR."
  *                 oneOf:
@@ -5242,24 +5364,31 @@ const UPLOAD_SETTLE_MS = 1500; // let the page process the upload / render a pre
  *                 description: "Overall budget in ms to wait for an upload UI (in-app panel input or native file chooser) to appear after the trigger is activated. Ignored values (non-numeric or <= 0) fall back to the default."
  *     responses:
  *       200:
- *         description: "File(s) attached."
+ *         description: "File(s) attached. Body: { ok, attached, files: [{ name, size, mimeType }], via: target_input|direct_input|panel_input|filechooser|drop }."
  *       400:
- *         description: "Bad request (missing path/userId; non-regular file; or a path that is missing or outside the configured upload directory)."
+ *         description: "Bad request (missing userId or file source; more than one source; base64 without filename; non-regular file; or a path that is missing or outside the configured upload directory)."
+ *       413:
+ *         description: "url or base64 file larger than 25 MB."
+ *       502:
+ *         description: "Fetching url failed."
  *       404:
  *         description: "Tab not found."
  */
-app.post('/tabs/:tabId/upload', async (req, res) => {
+app.post('/tabs/:tabId/upload', uploadJsonParser, async (req, res) => {
   const tabId = req.params.tabId;
   try {
-    const { userId, ref, selector } = req.body;
-    const { path: filePath } = req.body;
+    const { userId, ref, selector, nth } = req.body;
+    const { path: filePath, url, base64 } = req.body;
+    const dropOnly = req.body.mode === 'drop';
     const uploadTimeout = Number.isFinite(req.body.timeout) && req.body.timeout > 0
       ? req.body.timeout
       : UPLOAD_UI_TIMEOUT_MS;
     if (!userId) return res.status(400).json({ error: 'userId required' });
-    if (!filePath) return res.status(400).json({ error: 'path required (container-side file path)' });
+    if (!filePath && !url && !base64) return res.status(400).json({ error: 'path, url, or base64 required' });
+    if (dropOnly && !ref && !selector) return res.status(400).json({ error: 'mode "drop" needs a ref or selector for the drop zone' });
 
-    const paths = await resolveUploadPaths({ uploadsDir: CONFIG.uploadsDir, filePaths: Array.isArray(filePath) ? filePath : [filePath] });
+    const source = await loadUploadSource(req.body);
+    const paths = source.files;
 
     const session = sessions.get(normalizeUserId(userId));
     const found = session && findTab(session, tabId);
@@ -5284,10 +5413,100 @@ app.post('/tabs/:tabId/upload', async (req, res) => {
         return false;
       };
 
-      // Strategy 1: an <input type=file> already exists right now (an upload
-      // panel was opened before this call) -> set files directly. setInputFiles
-      // works on hidden inputs and skips the OS dialog entirely.
-      if (await trySetExistingInput()) {
+      // Resolve the trigger (ref or selector) up front: it is used to find the
+      // file input that belongs to it, to open a chooser, and as a drop target.
+      let locator = null;
+      if (ref) {
+        locator = refToLocator(tabState.page, ref, tabState.refs);
+        if (!locator) {
+          try {
+            tabState.refs = await refreshTabRefs(tabState, { reason: 'pre_upload', timeoutMs: UPLOAD_REFS_TIMEOUT_MS });
+          } catch (e) { /* proceed without refresh */ }
+          locator = refToLocator(tabState.page, ref, tabState.refs);
+        }
+        if (!locator) {
+          const maxRef = tabState.refs.size > 0 ? `e${tabState.refs.size}` : 'none';
+          throw new StaleRefsError(ref, maxRef, tabState.refs.size);
+        }
+      } else if (selector) {
+        locator = Number.isInteger(nth) ? tabState.page.locator(selector).nth(nth) : tabState.page.locator(selector).first();
+      }
+
+      // Strategy 0: the trigger is a file input, contains one, is the <label>
+      // of one, or sits inside a drop zone/section that holds exactly one. This
+      // picks the RIGHT input on forms with several (CV + cover letter).
+      const trySetTargetInput = async () => {
+        const token = `bwl-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        let marked = false;
+        try {
+          marked = await locator.evaluate((el, { token, depth }) => {
+            const isFile = (n) => n && n.tagName === 'INPUT' && n.type === 'file';
+            let input = null;
+            if (isFile(el)) input = el;
+            else if (el.tagName === 'LABEL' && isFile(el.control)) input = el.control;
+            else {
+              const inside = el.querySelectorAll('input[type="file"]');
+              if (inside.length === 1) input = inside[0];
+              let node = el.parentElement;
+              for (let i = 0; !input && node && i < depth; i++, node = node.parentElement) {
+                const found = node.querySelectorAll('input[type="file"]');
+                if (found.length === 1) input = found[0];
+                else if (found.length > 1) break; // ambiguous: let the chooser decide
+              }
+            }
+            if (!input) return false;
+            input.setAttribute('data-bwl-upload', token);
+            return true;
+          }, { token, depth: UPLOAD_ANCESTOR_DEPTH }, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
+          if (!marked) return false;
+          await tabState.page.locator(`[data-bwl-upload="${token}"]`).setInputFiles(paths, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
+          return true;
+        } catch (e) {
+          log('info', 'upload: setInputFiles on target input failed', { error: e.message });
+          return false;
+        } finally {
+          if (marked) {
+            await tabState.page.locator(`[data-bwl-upload="${token}"]`)
+              .evaluate((n) => n.removeAttribute('data-bwl-upload'), null, { timeout: UPLOAD_INPUT_TIMEOUT_MS })
+              .catch(() => {});
+          }
+        }
+      };
+
+      // Last resort for drop zones with no file input at all: build a
+      // DataTransfer holding the files in the page and fire the same
+      // dragenter/dragover/drop sequence a real drag from the desktop does.
+      const tryDrop = async () => {
+        try {
+          const files = source.payloads.map((p) => ({ name: p.name, mimeType: p.mimeType, b64: p.buffer.toString('base64') }));
+          return await locator.evaluate((el, files) => {
+            const dt = new DataTransfer();
+            for (const f of files) {
+              const bin = atob(f.b64);
+              const bytes = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+              dt.items.add(new File([bytes], f.name, { type: f.mimeType }));
+            }
+            for (const type of ['dragenter', 'dragover', 'drop']) {
+              el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+            }
+            return true;
+          }, files, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
+        } catch (e) {
+          log('info', 'upload: drop on target failed', { error: e.message });
+          return false;
+        }
+      };
+
+      if (dropOnly) {
+        if (await tryDrop()) attachedVia = 'drop';
+      } else if (locator && await trySetTargetInput()) {
+        attachedVia = 'target_input';
+      } else if ((!locator || await tabState.page.locator('input[type="file"]').count() === 1) && await trySetExistingInput()) {
+        // Strategy 1: an <input type=file> already exists right now (an upload
+        // panel was opened before this call) -> set files directly. setInputFiles
+        // works on hidden inputs and skips the OS dialog entirely. With a trigger,
+        // only when the page has a single file input, so we never fill the wrong one.
         attachedVia = 'direct_input';
       }
 
@@ -5298,23 +5517,8 @@ app.post('/tabs/:tabId/upload', async (req, res) => {
       // LinkedIn A/B-tests both behaviors for the same "Photo" control, so we
       // arm the filechooser listener BEFORE clicking and then race it against
       // polling for a freshly-mounted input. Whichever resolves first wins.
-      if (!attachedVia) {
-        let locator;
-        if (ref) {
-          locator = refToLocator(tabState.page, ref, tabState.refs);
-          if (!locator) {
-            try {
-              tabState.refs = await refreshTabRefs(tabState, { reason: 'pre_upload', timeoutMs: UPLOAD_REFS_TIMEOUT_MS });
-            } catch (e) { /* proceed without refresh */ }
-            locator = refToLocator(tabState.page, ref, tabState.refs);
-          }
-          if (!locator) {
-            const maxRef = tabState.refs.size > 0 ? `e${tabState.refs.size}` : 'none';
-            throw new StaleRefsError(ref, maxRef, tabState.refs.size);
-          }
-        } else if (selector) {
-          locator = tabState.page.locator(selector);
-        } else {
+      if (!attachedVia && !dropOnly) {
+        if (!locator) {
           const err = new Error('No input[type=file] present and no ref/selector trigger provided.');
           err.statusCode = 400;
           throw err;
@@ -5344,7 +5548,7 @@ app.post('/tabs/:tabId/upload', async (req, res) => {
         const panelWindow = Math.max(UPLOAD_PANEL_POLL_MS, uploadTimeout - UPLOAD_PANEL_MARGIN_MS);
         const deadline = Date.now() + panelWindow;
         while (!attachedVia && Date.now() < deadline) {
-          if (await trySetExistingInput()) { attachedVia = 'panel_input'; break; }
+          if (await trySetTargetInput() || await trySetExistingInput()) { attachedVia = 'panel_input'; break; }
           await tabState.page.waitForTimeout(UPLOAD_PANEL_POLL_MS);
         }
         if (!attachedVia) {
@@ -5366,11 +5570,16 @@ app.post('/tabs/:tabId/upload', async (req, res) => {
         // anyway. Nothing to do here; documented so nobody re-adds a second
         // setFiles (that was the source of the duplicate-image bug).
 
-        if (!attachedVia) {
-          const err = new Error('Upload trigger did not open a file chooser or mount a file input.');
-          err.statusCode = 422;
-          throw err;
-        }
+        // Nothing to pick a file with: treat the trigger as a drop zone.
+        if (!attachedVia && await tryDrop()) attachedVia = 'drop';
+      }
+
+      if (!attachedVia) {
+        const err = new Error(dropOnly
+          ? 'Dropping the file on the target failed.'
+          : 'Upload trigger did not open a file chooser, mount a file input, or accept a drop.');
+        err.statusCode = 422;
+        throw err;
       }
 
       // Allow the page to process the upload / render a preview.
@@ -5381,11 +5590,13 @@ app.post('/tabs/:tabId/upload', async (req, res) => {
         tabState.refs = await refreshTabRefs(tabState, { reason: 'post_upload', timeoutMs: UPLOAD_REFS_TIMEOUT_MS });
       } catch (e) { tabState.refs = new Map(); }
 
-      return { ok: true, attached: paths, via: attachedVia, refsAvailable: tabState.refs.size > 0 };
+      // `attached` keeps container paths for `path` sources (compat) and names otherwise.
+      const attached = filePath ? paths : source.info.map((f) => f.name);
+      return { ok: true, attached, files: source.info, via: attachedVia, refsAvailable: tabState.refs.size > 0 };
     }));
 
-    log('info', 'uploaded', { reqId: req.reqId, tabId, attached: paths, via: result.via });
-    pluginEvents.emit('tab:upload', { userId, tabId, paths });
+    log('info', 'uploaded', { reqId: req.reqId, tabId, files: source.info, via: result.via });
+    pluginEvents.emit('tab:upload', { userId, tabId, paths: result.attached });
     res.json(result);
   } catch (err) {
     log('error', 'upload failed', { reqId: req.reqId, tabId, error: err.message });

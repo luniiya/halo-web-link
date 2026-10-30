@@ -20,7 +20,13 @@ export function buildAgentPrompt({ mcpUrl, profile, authRequired, profiles }: Ag
   const authFlag = authRequired ? ` --header "Authorization: Bearer <BWL_ACCESS_KEY>"` : "";
   return `# Browser: Bloom Web Link (bwl)
 
-You have a headless anti-detection browser (Camoufox) available over MCP. Use the bwl tools for any web browsing instead of a built-in browser or curl: they get past bot detection and keep cookies/logins.
+You have a headless anti-detection browser (Camoufox) available over MCP. It gets past bot detection and keeps cookies/logins, but it is slower and heavier than your built-in web tools.
+
+## When to use it
+
+- Simple lookups (search, reading docs, articles, an API or a static page): use your built-in tools first, such as WebSearch/WebFetch or curl. They are faster and cheaper.
+- Use bwl when the built-in tools fail or can't do the job: the page blocks bots, shows a captcha, needs JavaScript to render, needs a login or saved cookies, or you have to interact with it (click, fill a form, upload a file, go through several steps).
+- These are defaults, not rules. Use your judgment: if a site is known to need bwl, go straight to it; if bwl is overkill, don't use it.
 
 ## Connection
 
@@ -48,6 +54,7 @@ For a throwaway session that must not touch any saved logins, use \`profile: "bu
 5. Tabs stay open until closed, so \`bwl_close_tab({ tabId })\` when you're done, unless the user wants the tab kept.
 
 Files: \`bwl_save_page({ tabId })\` saves the current page (like Ctrl+S; a PDF or other document is saved as the original file). Downloads a click triggers are captured too. \`bwl_downloads({ tabId })\` lists them, and \`bwl_downloads({ tabId, downloadId })\` returns the file contents.
+To attach a file to an upload field (a CV, a photo), use \`bwl_upload({ tabId, ref, url })\` with \`ref\` pointing at the input, its "Upload" button, or the drop zone. The bwl server fetches \`url\` itself, so serve a local file over HTTP (e.g. \`python3 -m http.server\` on an address bwl can reach) instead of inlining it. For small files, \`base64\` + \`filename\` works too.
 
 The user can watch and take over every tab live in the dashboard. If you hit a captcha or a login you can't complete, ask them to finish it there, then continue.
 

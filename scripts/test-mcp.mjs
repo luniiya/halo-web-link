@@ -26,6 +26,7 @@ const EXPECTED_TOOLS = [
   'bwl_read_text',
   'bwl_select',
   'bwl_element_state',
+  'bwl_upload',
   'bwl_batch',
   'bwl_wait_for_reply',
   'bwl_keep_open',

@@ -351,6 +351,36 @@ function createTestApp() {
     `);
   });
 
+  // Job-application style form: two file inputs (each in its own drop zone) and
+  // a drop zone with no file input at all, for target-input and drop tests.
+  app.get('/upload-form', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html><head><title>Upload Form Test</title></head>
+      <body>
+        <div class="zone" id="cvZone"><button type="button">Upload CV</button><input type="file" id="cv" hidden /></div>
+        <div class="zone" id="letterZone"><button type="button">Upload cover letter</button><input type="file" id="letter" hidden /></div>
+        <div id="dropOnly" style="width:200px;height:80px">Drop files here</div>
+        <output id="cvName"></output><output id="letterName"></output><output id="dropped"></output>
+        <script>
+          const show = (input, out) => input.addEventListener('change', () => {
+            const f = input.files[0];
+            document.getElementById(out).textContent = f ? f.name + ':' + f.size : '';
+          });
+          show(document.getElementById('cv'), 'cvName');
+          show(document.getElementById('letter'), 'letterName');
+          const zone = document.getElementById('dropOnly');
+          zone.addEventListener('dragover', (e) => e.preventDefault());
+          zone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const f = e.dataTransfer.files[0];
+            document.getElementById('dropped').textContent = f.name + ':' + f.type + ':' + (await f.text());
+          });
+        </script>
+      </body></html>
+    `);
+  });
+
   app.get('/large-page', (req, res) => {
     const count = parseInt(req.query.count) || 500;
     const items = Array.from({ length: count }, (_, i) =>

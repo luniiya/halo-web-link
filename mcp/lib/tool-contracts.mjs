@@ -426,6 +426,41 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: 'bwl_upload',
+    description:
+      'Attach a file to an upload field (CV, photo, document) without the OS file dialog. ' +
+      'Give exactly one source: url (the bwl server downloads it -- use this for anything bigger than a few hundred KB, ' +
+      'e.g. serve the file on your LAN with `python3 -m http.server`), base64 + filename (small files), ' +
+      'or path (a file already inside the server upload directory). ' +
+      'Point ref/selector at the file input, its label, the "Upload" button, or the drop zone: bwl finds the matching file input, ' +
+      'answers the file chooser, or drops the file like a real drag-and-drop. Omit ref/selector when the page has a single file input. ' +
+      'Returns { ok, files: [{ name, size, mimeType }], via }. Snapshot afterwards to confirm the page shows the file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabId: { type: 'string', description: 'Tab identifier' },
+        ref: { type: 'string', description: 'Element ref from snapshot: file input, label, upload button, or drop zone' },
+        selector: { type: 'string', description: 'CSS selector (alternative to ref)' },
+        nth: { type: 'number', minimum: 0, description: '0-based index when selector matches several elements' },
+        url: { type: 'string', description: 'http(s) URL the bwl server fetches the file from (max 25 MB)' },
+        base64: { type: 'string', description: 'File contents as base64 (requires filename, max 25 MB)' },
+        filename: { type: 'string', description: 'Name the page sees. Required with base64; overrides the url-derived name' },
+        mimeType: { type: 'string', description: 'MIME type, e.g. application/pdf (default: from url, else application/octet-stream)' },
+        path: {
+          description: 'Absolute path (or array) inside the bwl server upload directory',
+          oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+        },
+        mode: {
+          type: 'string',
+          enum: ['auto', 'drop'],
+          description: 'auto (default) tries file input, then file chooser, then drop; drop only drag-and-drops onto ref/selector',
+        },
+        timeout: { type: 'number', description: 'ms to wait for an upload UI to appear after activating the trigger (default 12000)' },
+      },
+      required: ['tabId'],
+    },
+  },
+  {
     name: 'bwl_batch',
     description:
       'Run a sequence of actions (click, type, wait, scroll, navigate, read_text) against one tab in a single call, ' +
@@ -587,6 +622,8 @@ export function buildRequest(name, args, ctx) {
       return { method: 'POST', path: `/tabs/${args.tabId}/lifetime`, auth: 'accessKey', responseKind: 'json', body: { userId, keepOpen: args.keepOpen ?? true } };
     case 'bwl_save_page':
       return { method: 'POST', path: `/tabs/${args.tabId}/save-page`, auth: 'accessKey', responseKind: 'json', body: { userId } };
+    case 'bwl_upload':
+      return { method: 'POST', path: `/tabs/${args.tabId}/upload`, auth: 'accessKey', responseKind: 'json', body: { ...without(args), userId } };
     case 'bwl_downloads': {
       const params = new URLSearchParams({ userId });
       if (args.downloadId) {

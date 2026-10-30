@@ -1599,7 +1599,7 @@
           "Interaction"
         ],
         "summary": "Attach a file to an upload control",
-        "description": "Attaches files from the configured upload directory without going through the native OS file dialog. Set BWL_UPLOADS_DIR to a directory that contains the files (default: ~/.bwl/uploads). Two strategies are tried in order: (1) if an <input type=\"file\"> is already present, call Playwright setInputFiles on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger element (ref or selector) via keyboard (focus + Enter) then a forced click as fallback, and call setFiles on the resulting chooser. Each path must be an absolute path that resolves inside the configured upload directory.\n",
+        "description": "Attaches a file without going through the native OS file dialog. The file comes from exactly one source: `path` (inside BWL_UPLOADS_DIR, default ~/.bwl/uploads), `url` (fetched by the server, so the agent never has to inline large files), or `base64` + `filename`. `url` and `base64` files stay in memory and are capped at 25 MB. Strategies, in order: (0) when a ref/selector is given, use the file input it is, labels, contains, or shares a drop zone/section with; (1) if the page has a single <input type=\"file\"> (or no trigger was given), set files on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger via keyboard (focus + Enter) then a forced click, and answer the chooser or a freshly mounted panel input; (3) as a last resort, drop the file on the trigger with a synthetic drag-and-drop. `mode: \"drop\"` skips straight to (3).\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1617,12 +1617,40 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "userId",
-                  "path"
+                  "userId"
                 ],
                 "properties": {
                   "userId": {
                     "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "http(s) URL the server downloads the file from (e.g. a LAN file server)."
+                  },
+                  "base64": {
+                    "type": "string",
+                    "description": "File contents, base64 (a data: URL prefix is accepted). Requires filename."
+                  },
+                  "filename": {
+                    "type": "string",
+                    "description": "File name the page sees. Required with base64; overrides the name derived from url."
+                  },
+                  "mimeType": {
+                    "type": "string",
+                    "description": "MIME type the page sees. Defaults to the url's Content-Type, else application/octet-stream."
+                  },
+                  "nth": {
+                    "type": "integer",
+                    "description": "0-based match index when selector matches several elements."
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "drop"
+                    ],
+                    "default": "auto",
+                    "description": "drop dispatches a synthetic drag-and-drop on the ref/selector instead of using a file input."
                   },
                   "path": {
                     "description": "Absolute path, or array of paths, that resolves within BWL_UPLOADS_DIR.",
@@ -1658,13 +1686,19 @@
         },
         "responses": {
           "200": {
-            "description": "File(s) attached."
+            "description": "File(s) attached. Body: { ok, attached, files: [{ name, size, mimeType }], via: target_input|direct_input|panel_input|filechooser|drop }."
           },
           "400": {
-            "description": "Bad request (missing path/userId; non-regular file; or a path that is missing or outside the configured upload directory)."
+            "description": "Bad request (missing userId or file source; more than one source; base64 without filename; non-regular file; or a path that is missing or outside the configured upload directory)."
           },
           "404": {
             "description": "Tab not found."
+          },
+          "413": {
+            "description": "url or base64 file larger than 25 MB."
+          },
+          "502": {
+            "description": "Fetching url failed."
           }
         }
       }

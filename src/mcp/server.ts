@@ -45,7 +45,12 @@ function createProtocolServer(config: ContainerConfig, userId: string, baseForAg
     { name: "bloom-web-link", version: config.packageVersion },
     {
       capabilities: { tools: {} },
-      instructions: "Use snapshots to obtain refs, then click/type with those refs. Each HTTP MCP session has isolated browser storage.",
+      instructions:
+        "bwl is a real anti-detection browser: slower and heavier than built-in web tools. For simple lookups (search, docs, articles, static pages, APIs) " +
+        "prefer your built-in tools such as WebSearch/WebFetch or curl. Use bwl when those fail or can't do the job: bot blocks, captchas, " +
+        "JavaScript-only pages, logins/saved cookies, or anything interactive (forms, clicks, file uploads with bwl_upload, multi-step flows). " +
+        "These are defaults; use your own judgment. " +
+        "Use snapshots to obtain refs, then click/type with those refs. Each HTTP MCP session has isolated browser storage.",
     },
   );
   const baseUrl = `http://${config.coreHost}:${config.corePort}`;

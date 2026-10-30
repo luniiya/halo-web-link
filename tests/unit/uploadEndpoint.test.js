@@ -27,9 +27,10 @@ const serverSrc = readFileSync(join(__dirname, '../../server.js'), 'utf8');
  * request provides userId and path. Individual path validation is performed by
  * resolveUploadPaths(), which has direct unit coverage in uploadPaths.test.js.
  */
-function validateUploadRequest({ userId, path: filePath }) {
+function validateUploadRequest({ userId, path: filePath, url, base64, mode, ref, selector }) {
   if (!userId) return { status: 400, error: 'userId required' };
-  if (!filePath) return { status: 400, error: 'path required (container-side file path)' };
+  if (!filePath && !url && !base64) return { status: 400, error: 'path, url, or base64 required' };
+  if (mode === 'drop' && !ref && !selector) return { status: 400, error: 'mode "drop" needs a ref or selector for the drop zone' };
 
   return null;
 }
@@ -52,9 +53,20 @@ describe('/upload request validation', () => {
     expect(r).toMatchObject({ status: 400, error: 'userId required' });
   });
 
-  test('requires path', () => {
+  test('requires a file source', () => {
     const r = validateUploadRequest({ userId: 'agent1' });
-    expect(r).toMatchObject({ status: 400, error: expect.stringContaining('path required') });
+    expect(r).toMatchObject({ status: 400, error: 'path, url, or base64 required' });
+  });
+
+  test('accepts url or base64 instead of path', () => {
+    expect(validateUploadRequest({ userId: 'agent1', url: 'http://lan/cv.pdf' })).toBeNull();
+    expect(validateUploadRequest({ userId: 'agent1', base64: 'aGk=', filename: 'a.txt' })).toBeNull();
+  });
+
+  test('drop mode needs a drop target', () => {
+    const r = validateUploadRequest({ userId: 'agent1', url: 'http://lan/cv.pdf', mode: 'drop' });
+    expect(r).toMatchObject({ status: 400, error: expect.stringContaining('drop') });
+    expect(validateUploadRequest({ userId: 'agent1', url: 'http://lan/cv.pdf', mode: 'drop', ref: 'e3' })).toBeNull();
   });
 
   test('accepts a single string path for upload-root validation', () => {
@@ -111,6 +123,30 @@ describe('/upload source contract', () => {
     expect(serverSrc).toMatch(/keyboard\.press\(\s*['"]Enter['"]\s*\)/);
     expect(serverSrc).toMatch(/force:\s*true/);
     expect(serverSrc).toMatch(/setFiles\(/);
+  });
+
+  test('url and base64 sources stay in memory, are size-capped, and need exactly one source', () => {
+    expect(serverSrc).toMatch(/async function loadUploadSource\(/);
+    expect(serverSrc).toMatch(/const UPLOAD_MAX_BYTES = /);
+    expect(serverSrc).toMatch(/invalid_upload_source/);
+    expect(serverSrc).toMatch(/upload_too_large/);
+    // no temp files: url/base64 become { name, mimeType, buffer } payloads
+    expect(serverSrc).toMatch(/payload = \{ name, mimeType, buffer \}/);
+  });
+
+  test('targets the file input belonging to a ref/selector and can drop on a drop zone', () => {
+    expect(serverSrc).toMatch(/target_input/);
+    expect(serverSrc).toMatch(/new DataTransfer\(\)/);
+    expect(serverSrc).toMatch(/\['dragenter', 'dragover', 'drop'\]/);
+    expect(serverSrc).toMatch(/attachedVia = 'drop'/);
+  });
+
+  test('upload route has its own larger body limit', () => {
+    expect(serverSrc).toMatch(/const uploadJsonParser = express\.json\(\{ limit: '40mb' \}\);/);
+    expect(serverSrc).toMatch(/app\.post\('\/tabs\/:tabId\/upload', uploadJsonParser,/);
+    // the profile re-pointing middleware must parse upload bodies too
+    expect(serverSrc).toMatch(/req\.path === '\/upload'\) return uploadJsonParser\(req, res, route\)/);
+    expect(serverSrc).toMatch(/\(evaluate\|upload\)\$/);
   });
 
   test('runs under the per-user and per-tab locks like the other interaction routes', () => {

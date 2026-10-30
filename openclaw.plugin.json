@@ -121,6 +121,7 @@
       "bwl_delete_profile",
       "bwl_import_cookies",
       "bwl_element_state",
+      "bwl_upload",
       "bwl_batch",
       "bwl_save_page",
       "bwl_downloads"

@@ -166,6 +166,10 @@
         "description": "Computed style + ARIA state for selectors, without a screenshot"
       },
       {
+        "name": "bwl_upload",
+        "description": "Attach a file (url, base64, or path) to an upload field or drop zone"
+      },
+      {
         "name": "bwl_batch",
         "description": "Run several click/type/wait/scroll/navigate/read_text actions in one call"
       },

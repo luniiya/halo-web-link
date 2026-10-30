@@ -94,6 +94,7 @@ For hosts that only support stdio, a thin adapter lives in [`mcp/`](mcp/README.m
 | `bwl_navigate` | Go to a URL or run a search macro (`@google_search`, …) |
 | `bwl_screenshot` | Capture a screenshot |
 | `bwl_element_state` | Computed style and ARIA state for selectors |
+| `bwl_upload` | Attach a file (by URL, base64, or path) to an upload field or drop zone, no OS dialog |
 | `bwl_evaluate` | Run JavaScript in the page |
 | `bwl_batch` | Run several actions in one call |
 | `bwl_save_page` | Save the current page or document (like Ctrl+S) into the tab's downloads |
