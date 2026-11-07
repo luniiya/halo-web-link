@@ -8,7 +8,7 @@ const SECONDARY_KEY = "hwl-secondary";
 const SIDEBAR_KEY = "hwl-sidebar-collapsed";
 
 export const DEFAULT_ACCENT = "#1cb0f6";
-export const DEFAULT_SECONDARY = "#ec4f9a";
+export const DEFAULT_SECONDARY = "#7c5cff";
 /** Swatches offered in the color picker; any #rrggbb works too. */
 export const COLOR_PRESETS = ["#1cb0f6", "#7c5cff", "#ec4f9a", "#58cc02", "#ff9600", "#ff4b4b", "#00c2a8", "#4b4b4b"];
 

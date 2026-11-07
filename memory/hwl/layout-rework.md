@@ -96,3 +96,4 @@ markup, `[hidden]{display:none!important}`, `.tab-detail:fullscreen .screen`, no
 - Tried putting other tabs + activity beside the live view on wide screens; user rejected it ("it should always be below"). Instead the detail section is min-height 100vh minus main padding and the two panels below flex to fill what the live view leaves (min 220px), same height, scrolling inside, so the page does not scroll.
 - Exception (user asked): when the streamed page is phone-shaped (ratio w<h) and the window is >=1100px, `.detail-layout.portrait` puts the panels beside the live view, stacked, as tall as it.
 - Removed the "All tabs" back button above the tab view (sidebar covers it).
+- Other-tabs panel cards: screenshot is the card background with a surface-colored veil (78%, 62% on hover), title on top, no footer. Light = white wash, dark = dim (surface token does both).

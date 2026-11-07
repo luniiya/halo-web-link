@@ -21,3 +21,6 @@ Related: [[hwl-rebrand]] [[halo-style-branding]]
 User: "the accent color should be user configurable anyways" → **accent and secondary are user-configurable**
 in the dashboard (presets + custom picker, like haloLesson's Appearance card). No accounts in hwl, so saved
 per browser in localStorage (`hwl-accent`, `hwl-secondary`), applied by the no-flash inline script too.
+
+## Default secondary is purple *(2026-11-07)*
+User asked: default secondary is now violet `#7c5cff` (theme.ts DEFAULT_SECONDARY + styles.css `--secondary`), replacing pink `#ec4f9a`. Pink stays a preset.

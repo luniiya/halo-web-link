@@ -1,14 +1,76 @@
-# Halo Web Link
+<div align="center">
+  <h1>Halo Web Link</h1>
 
-A headless, anti-detection browser built for AI agents. It runs in Docker and gives agents a real Firefox ([Camoufox](https://camoufox.com)) over **MCP**. A live web dashboard shows every tab the agents have open.
+  <p>
+    hwl is a browser that runs in a Docker container. AI agents can control it over MCP,<br>
+    and you can watch them or use the browser yourself from the dashboard.
+  </p>
+
+  <p>
+    <a href="#quick-start"><strong>GET STARTED</strong></a> ·
+    <a href="#screenshots"><strong>SCREENSHOTS</strong></a> ·
+    <a href="#connect-an-agent"><strong>CONNECT YOUR AGENT</strong></a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/DOCKER-ONLY-7c5cff?style=for-the-badge" alt="Docker only">
+    <img src="https://img.shields.io/badge/MCP-READY-ec4f9a?style=for-the-badge" alt="MCP ready">
+    <img src="https://img.shields.io/badge/CAMOUFOX-INSIDE-ffc800?style=for-the-badge" alt="Camoufox inside">
+  </p>
+</div>
+
+---
+
+## What it does
+
+Agents can open tabs, browse websites, click, type, scroll, upload and download files, run JavaScript, and more. The dashboard shows every tab with live page previews, so you can see what the agent is doing and take over if you want.
+
+hwl uses Camoufox and gives each browser profile a stable fingerprint to help avoid bot detection. Profiles keep their cookies, storage, tabs, and history between sessions and restarts. You can use a different profile for each project to keep its logins and browsing data separate.
+
+**Local addresses:**
 
 - **MCP endpoint:** `http://localhost:9377/mcp` (Streamable HTTP)
 - **Dashboard:** `http://localhost:6080`
 - **REST API:** `http://localhost:9377` (OpenAPI spec at `/openapi.json`)
 
+## Screenshots
+
+The home page and page preview in light and dark mode.
+
+<table>
+  <thead>
+    <tr>
+      <th width="50%" align="center">Light mode</th>
+      <th width="50%" align="center">Dark mode</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center">
+        <strong>Home</strong><br><br>
+        <img src="docs/screenshots/home-light.png" alt="Halo Web Link home page in light mode" width="100%">
+      </td>
+      <td align="center">
+        <strong>Home</strong><br><br>
+        <img src="docs/screenshots/home-dark.png" alt="Halo Web Link home page in dark mode" width="100%">
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <strong>Page preview</strong><br><br>
+        <img src="docs/screenshots/page-preview-light.png" alt="Halo Web Link page preview in light mode" width="100%">
+      </td>
+      <td align="center">
+        <strong>Page preview</strong><br><br>
+        <img src="docs/screenshots/page-preview-dark.png" alt="Halo Web Link page preview in dark mode" width="100%">
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ## Quick start
 
-hwl only runs in Docker. Pick one of two ways.
+hwl only runs in a Docker container. Pick one of two ways.
 
 ### Option 1: pull the prebuilt image (recommended)
 

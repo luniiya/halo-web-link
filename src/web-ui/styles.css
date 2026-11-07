@@ -7,7 +7,7 @@
   --accent-light: color-mix(in oklab, var(--accent) 75%, white);
   --accent-pale: color-mix(in oklab, var(--accent) 22%, white);
   --accent-text: var(--accent-deep);
-  --secondary: #ec4f9a;
+  --secondary: #7c5cff;
   --secondary-deep: color-mix(in oklab, var(--secondary) 80%, black);
   --secondary-pale: color-mix(in oklab, var(--secondary) 14%, white);
   --cardinal: #ff4b4b;
@@ -264,7 +264,15 @@ main > section:has(> .detail-layout)[hidden] { display: none; }
 .detail-below { display: grid; flex: 1 1 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; min-height: 220px; }
 .detail-panel { display: flex; flex-direction: column; min-height: 0; padding: 14px 0 0; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); }
 .detail-panel .section-heading { padding: 0 16px; }
-.sibling-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; padding: 4px 16px 16px; overflow-y: auto; }
+.sibling-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-content: start; gap: 12px; padding: 4px 16px 16px; overflow-y: auto; }
+/* Compact cards: the screenshot is the card's background, veiled with the surface color (a light wash in
+   light mode, a dim one in dark mode) so the title stays readable, instead of a tiny preview strip. */
+.sibling-grid .tab-card { position: relative; isolation: isolate; min-height: 72px; }
+.sibling-grid .screen-thumb { position: absolute; inset: 0; z-index: -1; aspect-ratio: auto; }
+.sibling-grid .screen-thumb::before { content: ""; position: absolute; inset: 0; z-index: 1; background: color-mix(in srgb, var(--surface) 78%, transparent); transition: background .15s; }
+.sibling-grid .tab-card:hover .screen-thumb::before { background: color-mix(in srgb, var(--surface) 62%, transparent); }
+.sibling-grid .screen-thumb .loading, .sibling-grid .tab-footer { display: none; }
+.sibling-grid .tab-meta { position: relative; border-bottom: 0; }
 .tab-detail { overflow: hidden; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); box-shadow: 0 4px 0 var(--swan); }
 .browser-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 2px solid var(--swan); background: var(--eel); }
 .address-form { flex: 1; min-width: 0; display: flex; }
@@ -334,7 +342,8 @@ main > section:has(> .detail-layout)[hidden] { display: none; }
 .connect-profile .icon { width: 15px; height: 15px; }
 .connect-profile select { max-width: 120px; border: 0; background: transparent; color: var(--ink); font-size: 13px; font-weight: 800; cursor: pointer; outline: none; }
 .connect-profile:focus-within { color: var(--secondary); }
-.connect-button { position: relative; isolation: isolate; overflow: hidden; padding: 8px 16px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; box-shadow: 0 3px 0 var(--accent-deep); font-size: 12.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; transition: transform .1s, box-shadow .1s, background .1s; }
+/* margin-bottom makes room for the 3px ledge so the button and its ledge sit centered in the pill. */
+.connect-button { position: relative; isolation: isolate; overflow: hidden; margin-bottom: 3px; padding: 8px 16px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; box-shadow: 0 3px 0 var(--accent-deep); font-size: 12.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; transition: transform .1s, box-shadow .1s, background .1s; }
 /* Shine that sweeps across on hover. */
 .connect-button::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, #fff6 50%, transparent 65%); transform: translateX(-120%); transition: transform .7s; }
 .connect-button:hover { background: var(--accent-light); }
