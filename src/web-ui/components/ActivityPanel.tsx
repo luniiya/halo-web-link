@@ -6,7 +6,7 @@ type Props = { entries: ActivityEntry[]; listRef?: RefObject<HTMLOListElement | 
 // Activity log: every call made against the open tab, appended as it happens.
 export function ActivityPanel({ entries, listRef }: Props) {
   return (
-    <aside className="activity" aria-label="Agent activity for this tab">
+    <aside className="detail-panel activity" aria-label="Agent activity for this tab">
       <h3 className="section-heading">Activity</h3>
       <p id="activity-empty" className="activity-empty" hidden={entries.length > 0}>No calls yet.</p>
       <ol id="activity-list" className="activity-list" ref={listRef}>

@@ -245,3 +245,38 @@ export function SidebarExpandIcon() {
     </svg>
   );
 }
+
+export function WindowIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 5m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+      <path d="M6 8h.01" />
+      <path d="M9 8h.01" />
+    </svg>
+  );
+}
+
+export function MaximizeIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M16 4l4 0l0 4" />
+      <path d="M14 10l6 -6" />
+      <path d="M8 20l-4 0l0 -4" />
+      <path d="M4 20l6 -6" />
+      <path d="M16 20l4 0l0 -4" />
+      <path d="M14 14l6 6" />
+      <path d="M8 4l-4 0l0 4" />
+      <path d="M4 4l6 6" />
+    </svg>
+  );
+}
+
+export function PinIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4" />
+      <path d="M9 15l-4.5 4.5" />
+      <path d="M14.5 4l5.5 5.5" />
+    </svg>
+  );
+}

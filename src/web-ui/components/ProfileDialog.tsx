@@ -130,6 +130,10 @@ export function ProfileDialog({ mode, onClose, onSubmit, onNewFingerprint }: Pro
           <button type="button" className="prompt-dialog-close" aria-label="Close" onClick={() => dialog.current?.close()}>×</button>
         </div>
 
+        {/* Wide rather than tall: who it is on the left, the machine on the right, switches underneath. */}
+        <div className="profile-columns">
+        <section className="profile-col" aria-labelledby="profile-identity-title">
+        <h3 id="profile-identity-title" className="profile-section-title">Identity</h3>
         {!profile && (
           <>
             <div className="profile-field">
@@ -189,8 +193,10 @@ export function ProfileDialog({ mode, onClose, onSubmit, onNewFingerprint }: Pro
         <datalist id="profile-locales">{LOCALES.map((v) => <option key={v} value={v} />)}</datalist>
         <datalist id="profile-timezones">{TIMEZONES.map((v) => <option key={v} value={v} />)}</datalist>
 
-        <details className="profile-advanced" open={!!profile}>
-          <summary>Machine details</summary>
+        </section>
+
+        <section className="profile-col" aria-labelledby="profile-machine-title">
+          <h3 id="profile-machine-title" className="profile-section-title">Machine details</h3>
           <label className="profile-field">
             <span className="profile-field-label">Graphics card</span>
             <select id="profile-gpu" className="profile-input" value={gpu && gpus.some((g) => gpuKey(g) === gpuKey(gpu)) ? gpuKey(gpu) : ""}
@@ -210,12 +216,16 @@ export function ProfileDialog({ mode, onClose, onSubmit, onNewFingerprint }: Pro
             {select("Webcams", "webcams", count(2), Number)}
           </div>
           {select("WebRTC", "webrtc", [["real", "Real (shows the public IP)"], ["block", "Blocked"]])}
+        </section>
+        </div>
+
+        <div className="profile-toggles">
           {toggle("Follow the IP's location", "geoip", "Timezone and geolocation come from the public IP.", true)}
           {toggle("Move the mouse like a person", "humanize", "Curved cursor paths instead of straight jumps.", true)}
           {toggle("Let it change over time", "drift", "A headset or webcam comes and goes, and the window is sometimes not maximized.", true)}
           {toggle("Do Not Track", "doNotTrack", "Few people turn it on, so it stands out.", false)}
           {toggle("Global Privacy Control", "globalPrivacyControl", "Sent by privacy browsers only.", false)}
-        </details>
+        </div>
 
         <div className="prompt-dialog-foot profile-dialog-foot">
           <button type="button" className="profile-delete" onClick={() => dialog.current?.close()}>Cancel</button>

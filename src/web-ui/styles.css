@@ -75,7 +75,6 @@ code { padding: 1px 6px; border-radius: 6px; background: var(--eel); color: var(
 .icon-button[aria-expanded="true"] { border-color: var(--secondary); color: var(--secondary); }
 .icon-button:disabled { opacity: .5; cursor: default; }
 .icon-button .icon { width: 18px; height: 18px; stroke-width: 2.5; }
-.icon-button-danger:hover:not(:disabled) { border-color: var(--cardinal); background: color-mix(in oklab, var(--cardinal) 10%, var(--surface)); color: var(--cardinal); box-shadow: 0 2px 0 var(--cardinal); }
 .icon-button.spinning .icon { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -114,8 +113,8 @@ code { padding: 1px 6px; border-radius: 6px; background: var(--eel); color: var(
 .nav-new:hover > .icon { transform: rotate(90deg); }
 .nav-trash:hover { background: color-mix(in oklab, var(--cardinal) 10%, var(--surface)); color: var(--cardinal); }
 .sidebar-foot { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 2px solid var(--swan); }
-.sidebar-tools { display: flex; flex-wrap: wrap; gap: 8px; }
-.sidebar-tools #collapse-button { margin-left: auto; }
+/* Spread evenly across the foot, however many tools are shown. */
+.sidebar-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .theme-icon { display: grid; animation: theme-spin .35s cubic-bezier(.3, 1.4, .5, 1); }
 @keyframes theme-spin { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }
 /* Compact: icons only, labels kept for screen readers; title attributes are the tooltips. */
@@ -123,9 +122,10 @@ code { padding: 1px 6px; border-radius: 6px; background: var(--eel); color: var(
 .sidebar-collapsed .sidebar :is(.nav-label, .nav-count, .brand-name, .nav-gear) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .sidebar-collapsed .nav-heading { height: 2px; margin: 8px 12px; padding: 0; background: var(--swan); color: transparent; }
 .sidebar-collapsed .sidebar-tools { flex-direction: column; align-items: center; }
-.sidebar-collapsed .sidebar-tools #collapse-button { margin-left: 0; }
 .sidebar-collapsed .browser-status { justify-content: center; }
 main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-left 200ms ease; }
+/* Pages sit in a centered column instead of hugging the sidebar. */
+main > section { max-width: 1280px; margin-inline: auto; }
 .eyebrow { margin: 0; color: var(--accent-text); font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
 
 /* --- Start page --- */
@@ -255,12 +255,17 @@ main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-
 @media (max-width: 640px) { .profile-row { flex-wrap: wrap; } .profile-ua { flex-basis: 100%; order: 5; } }
 
 /* --- Detail view (the only place clicks control the page) --- */
-.back-button { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px; padding: 8px 16px 8px 12px; border: 2px solid var(--swan); border-radius: 12px; background: var(--surface); color: var(--wolf); box-shadow: 0 2px 0 var(--swan); font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; transition: background .1s, color .1s, transform .1s, box-shadow .1s; }
-.back-button:hover { background: var(--eel); color: var(--ink); }
-.back-button:active { transform: translateY(2px); box-shadow: none; }
-#back-button .icon { stroke-width: 3; }
-.detail-layout { display: grid; grid-template-columns: minmax(0, 1040px) minmax(280px, 1fr); gap: 20px; align-items: start; }
-.tab-detail { overflow: hidden; max-width: 1040px; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); box-shadow: 0 4px 0 var(--swan); }
+/* Live view on top; under it the profile's other tabs (left) and the activity log (right).
+   The view fills the window height (minus main's 28px + 56px padding): the panels below take whatever the
+   live view leaves, both the same height, scrolling inside, so the page itself doesn't scroll. */
+main > section:has(> .detail-layout) { display: flex; flex-direction: column; min-height: calc(100vh - 84px); }
+main > section:has(> .detail-layout)[hidden] { display: none; }
+.detail-layout { display: flex; flex: 1; flex-direction: column; gap: 20px; }
+.detail-below { display: grid; flex: 1 1 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; min-height: 220px; }
+.detail-panel { display: flex; flex-direction: column; min-height: 0; padding: 14px 0 0; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); }
+.detail-panel .section-heading { padding: 0 16px; }
+.sibling-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; padding: 4px 16px 16px; overflow-y: auto; }
+.tab-detail { overflow: hidden; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); box-shadow: 0 4px 0 var(--swan); }
 .browser-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 2px solid var(--swan); background: var(--eel); }
 .address-form { flex: 1; min-width: 0; display: flex; }
 .address-input { flex: 1; height: 40px; padding: 0 14px; font-size: 14px; font-weight: 700; }
@@ -277,9 +282,34 @@ main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-
 #lifetime-status { color: var(--wolf); }
 #lifetime-status:empty { display: none; }
 #navigation-error { border-bottom: 2px solid color-mix(in oklab, var(--cardinal) 30%, var(--surface)); background: color-mix(in oklab, var(--cardinal) 8%, var(--surface)); color: var(--cardinal); }
-.tab-detail:fullscreen { display: flex; flex-direction: column; width: 100vw; max-width: none; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
-.tab-detail:fullscreen .browser-bar, .tab-detail:fullscreen .tab-meta, .tab-detail:fullscreen .tab-footer { flex-shrink: 0; }
-.tab-detail:fullscreen .screen { flex: 1; min-height: 0; aspect-ratio: auto; }
+/* Fill the page: the live view covers the dashboard (toasts stay on top); fullscreen: the whole screen. */
+.tab-detail.fill-page { position: fixed; inset: 0; z-index: 25; animation: fill-in .2s ease-out; }
+@keyframes fill-in { from { opacity: 0; transform: scale(.98); } }
+.tab-detail:fullscreen, .tab-detail.fill-page { display: flex; flex-direction: column; width: 100vw; max-width: none; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+.tab-detail:fullscreen .browser-bar, .tab-detail:fullscreen .tab-meta, .tab-detail:fullscreen .tab-footer,
+.tab-detail.fill-page .browser-bar, .tab-detail.fill-page .tab-footer { flex-shrink: 0; }
+.tab-detail:fullscreen .screen, .tab-detail.fill-page .screen { flex: 1; min-height: 0; aspect-ratio: auto; }
+
+/* Browser bar tools: keep open (pin), view size (3-way), close. */
+.keep-open .icon { transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.keep-open[aria-pressed="true"] { border-color: var(--secondary); background: var(--secondary-pale); color: var(--secondary); box-shadow: 0 2px 0 var(--secondary); }
+.keep-open[aria-pressed="true"] .icon { transform: rotate(-45deg); }
+.keep-open[aria-pressed="true"]:hover:not(:disabled) { background: var(--secondary-pale); color: var(--secondary); }
+.view-mode { display: flex; flex: none; gap: 2px; height: 40px; padding: 2px; border: 2px solid var(--swan); border-radius: 12px; background: var(--surface); box-shadow: 0 2px 0 var(--swan); }
+.view-mode button { display: grid; place-items: center; width: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--wolf); transition: background .12s, color .12s, transform .1s; }
+.view-mode button:hover { background: var(--eel); color: var(--ink); }
+.view-mode button:active { transform: scale(.9); }
+.view-mode button[aria-checked="true"] { background: var(--secondary-pale); color: var(--secondary); }
+.view-mode .icon { width: 17px; height: 17px; stroke-width: 2.5; }
+/* Close is destructive: it turns red, the X spins and the button shakes, with a red ring pulsing out. */
+.close-tab { position: relative; }
+.close-tab .icon { transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.close-tab::after { content: ""; position: absolute; inset: -2px; border-radius: 12px; border: 2px solid var(--cardinal); opacity: 0; pointer-events: none; }
+.close-tab:hover:not(:disabled), .close-tab:focus-visible { border-color: var(--cardinal); background: var(--cardinal); color: #fff; box-shadow: 0 2px 0 var(--cardinal-deep); animation: danger-shake .4s ease-in-out; }
+.close-tab:hover:not(:disabled) .icon { transform: rotate(90deg) scale(1.15); }
+.close-tab:hover:not(:disabled)::after { animation: danger-ring 1s ease-out infinite; }
+@keyframes danger-shake { 20%, 60% { translate: -2px 0; } 40%, 80% { translate: 2px 0; } }
+@keyframes danger-ring { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.45); } }
 
 .empty { padding: 12vh 20px; color: var(--wolf); text-align: center; }
 .empty h2 { margin: 12px 0 6px; color: var(--ink); font-size: 26px; font-weight: 900; }
@@ -287,8 +317,6 @@ main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-
 .empty .button { margin: 14px 6px 0; }
 
 /* --- Activity log (detail view) --- */
-.activity { position: sticky; top: 28px; display: flex; flex-direction: column; max-height: calc(100vh - 56px); padding: 14px 0 0; border: 2px solid var(--swan); border-radius: 20px; background: var(--surface); }
-.activity .section-heading { padding: 0 16px; }
 .activity-empty { margin: 0; padding: 0 16px 16px; color: var(--wolf); font-size: 13px; }
 .activity-list { margin: 0; padding: 0 0 6px; overflow-y: auto; list-style: none; font: 11.5px/1.45 ui-monospace, monospace; }
 .activity-list li { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: baseline; padding: 6px 16px; border-top: 2px solid var(--eel); }
@@ -351,7 +379,7 @@ main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-
 .prompt-dialog-copy:hover:not(:disabled) { background: var(--accent-light); }
 .prompt-dialog-copy:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
 .prompt-dialog-copy:disabled { opacity: .5; cursor: default; }
-.prompt-dialog.profile-dialog { width: min(460px, calc(100vw - 32px)); }
+.prompt-dialog.profile-dialog { width: min(1040px, calc(100vw - 32px)); }
 .prompt-dialog.profile-dialog .prompt-dialog-body { gap: 16px; max-height: 88vh; overflow-y: auto; }
 .profile-dialog-note { margin: 0; color: var(--wolf); font-size: 14px; line-height: 1.5; }
 .profile-dialog-foot { justify-content: flex-end; }
@@ -371,19 +399,28 @@ main { margin-left: var(--sidebar); padding: 28px 40px 56px; transition: margin-
 .segmented button { padding: 6px 14px; border: 2px solid transparent; border-radius: 10px; background: transparent; color: var(--wolf); font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; transition: background .12s, color .12s; }
 .segmented button:hover { color: var(--ink); }
 .segmented button[aria-checked="true"] { border-color: var(--secondary); background: var(--secondary-pale); color: var(--secondary); }
-.profile-advanced { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; border-top: 2px solid var(--swan); }
-.profile-advanced > summary { margin: 10px 0 2px; color: var(--wolf); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
-.profile-advanced[open] > summary { margin-bottom: 8px; }
-.profile-advanced > .profile-field, .profile-advanced > .profile-row-fields, .profile-advanced > .profile-toggle { margin-top: 14px; }
+.profile-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.profile-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.profile-col + .profile-col { padding-left: 28px; border-left: 2px solid var(--swan); }
+.profile-section-title { margin: 0; color: var(--ink); font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.profile-col .profile-field-hint-tight { margin-top: -8px; }
+.profile-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px 24px; padding-top: 16px; border-top: 2px solid var(--swan); }
+@media (max-width: 860px) { .profile-columns { grid-template-columns: 1fr; } .profile-col + .profile-col { padding: 16px 0 0; border-top: 2px solid var(--swan); border-left: 0; } }
 .profile-toggle { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; cursor: pointer; }
 .profile-toggle input { margin-top: 3px; accent-color: var(--secondary); }
 .profile-toggle strong { display: block; font-weight: 900; }
 .profile-toggle small { display: block; color: var(--wolf); font-size: 12px; }
 
+/* --- Phone-shaped page on a desktop window: panels beside the live view, as tall as it --- */
+@media (min-width: 1100px) {
+  .detail-layout.portrait { display: grid; grid-template-columns: min(calc((100vh - 200px) * (var(--screen-ratio))), 60%) minmax(0, 1fr); }
+  /* height 0 keeps the panels from growing the row; min-height then stretches them to the live view. */
+  .detail-layout.portrait .detail-below { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 2fr); height: 0; min-height: 100%; }
+}
+
 /* --- Narrow screens --- */
 @media (max-width: 1100px) {
-  .detail-layout { grid-template-columns: minmax(0, 1fr); }
-  .activity { position: static; max-height: 420px; }
+  .detail-below { flex: none; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 420px; }
 }
 @media (max-width: 750px) {
   /* The sidebar becomes a top bar of icons. */

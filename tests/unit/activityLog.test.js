@@ -34,6 +34,8 @@ describe('summarizeCall', () => {
     expect(summarizeCall('click', { selector: '#go' })).toBe('#go');
     expect(summarizeCall('click', { coordinates: { x: 10.4, y: 20.6 } })).toBe('(10, 21)');
     expect(summarizeCall('navigate', { url: 'https://example.com' })).toBe('https://example.com');
+    expect(summarizeCall('lifetime', { keepOpen: true })).toBe('keep open');
+    expect(summarizeCall('lifetime', { keepOpen: false })).toBe('allow idle close');
     expect(summarizeCall('navigate', { macro: '@google_search', query: 'cats' })).toBe('@google_search cats');
     expect(summarizeCall('press', { key: 'Enter' })).toBe('Enter');
     expect(summarizeCall('batch', { actions: [{}, {}, {}] })).toBe('3 actions');

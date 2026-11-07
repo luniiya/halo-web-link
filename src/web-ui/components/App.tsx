@@ -5,7 +5,7 @@ import { openTab, parseRoute, showGrid, type Route } from "../route.ts";
 import { dropShot, queueScreenshot } from "../screenshots.ts";
 import { applySidebarCollapsed, applyTheme, savedSidebarCollapsed, savedTheme, type Theme } from "../theme.ts";
 import type { ClosedEntry, Profile, State, TabRef } from "../types.ts";
-import { DetailView } from "./DetailView.tsx";
+import { DetailView, siblingTabs } from "./DetailView.tsx";
 import { GridView } from "./GridView.tsx";
 import { AgentPrompt, type ConnectInfo } from "./AgentPrompt.tsx";
 import { ProfileDialog, type ProfileDialogMode, type ProfileInput } from "./ProfileDialog.tsx";
@@ -102,6 +102,8 @@ export function App() {
     void activity.refresh(shown.tabId);
     const tab = view.state.sessions.find((s) => s.userId === shown.userId)?.tabs.find((t) => t.tabId === shown.tabId);
     if (tab) queueScreenshot(shown.userId, shown.tabId, true);
+    // Thumbnails of the profile's other tabs, shown under the live view.
+    for (const { session, tab: other } of siblingTabs(view.state, shown.userId, shown.tabId).tabs) queueScreenshot(session.userId, other.tabId);
   }, [view, detailKey]);
 
   // A profile that is gone (deleted, burner wiped) can't stay picked.

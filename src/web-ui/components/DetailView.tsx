@@ -5,10 +5,11 @@ import { authHeaders } from "../api.ts";
 import { handleScreenClick, handleScreenKeyDown, handleScreenPaste } from "../input.ts";
 import { closureLabel, lifetimeLabel } from "../lifetime.ts";
 import { openTab, showGrid } from "../route.ts";
-import { shortId, type ClosedEntry, type State } from "../types.ts";
+import { shortId, type ClosedEntry, type State, type TabRef } from "../types.ts";
 import { ActivityPanel } from "./ActivityPanel.tsx";
 import { queueScreenshot } from "../screenshots.ts";
-import { BackIcon, CloseIcon, ForwardIcon, FullscreenIcon, GlobeIcon, ReloadIcon } from "./icons.tsx";
+import { BackIcon, CloseIcon, ForwardIcon, FullscreenIcon, GlobeIcon, MaximizeIcon, PinIcon, ReloadIcon, WindowIcon } from "./icons.tsx";
+import { TabCard } from "./TabCard.tsx";
 import { LOADING_TEXT, useShot } from "./useShot.ts";
 
 type Props = {
@@ -23,6 +24,25 @@ type Props = {
   refresh: () => Promise<void>;
 };
 
+/** The other open tabs of this tab's profile (or of its session, when it has no profile). */
+export function siblingTabs(state: State, userId: string, tabId: string, last?: ClosedEntry): { profile: string | null; tabs: TabRef[] } {
+  const session = state.sessions.find((s) => s.userId === userId) ?? last?.session;
+  const profile = session?.profile ?? null;
+  const tabs = state.sessions
+    .filter((s) => profile ? s.profile === profile : s.userId === userId)
+    .flatMap((s) => s.tabs.map((tab) => ({ session: s, tab })))
+    .filter(({ tab }) => tab.tabId !== tabId);
+  return { profile, tabs };
+}
+
+/** How big the live view is: in the page layout, filling the dashboard page, or the whole screen. */
+export type ViewMode = "window" | "page" | "screen";
+const VIEW_MODES = [
+  { mode: "window", label: "Windowed", Icon: WindowIcon },
+  { mode: "page", label: "Fill the page", Icon: MaximizeIcon },
+  { mode: "screen", label: "Fullscreen", Icon: FullscreenIcon },
+] as const;
+
 // Wheel deltas are summed and sent at most this often, so a fling is a few scrolls, not hundreds.
 const WHEEL_FLUSH_MS = 120;
 
@@ -33,7 +53,7 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
   const detailImg = useRef<HTMLImageElement>(null);
   const shot = useShot(tabId);
   const [screenRatio, setScreenRatio] = useState<string>();
-  const [fullscreen, setFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("window");
   const [reopening, setReopening] = useState(false);
   // An error from reopen/save replaces the closure reason until the next poll.
   const [closureNote, setClosureNote] = useState<{ state: State; text: string } | null>(null);
@@ -41,11 +61,20 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
   const [address, setAddress] = useState<string | null>(null);
   const [navigating, setNavigating] = useState(false);
 
+  // Leaving browser fullscreen (Esc, F11) goes back to the windowed view.
   useEffect(() => {
-    const onChange = () => setFullscreen(!!tabDetail.current && document.fullscreenElement === tabDetail.current);
+    const onChange = () => { if (document.fullscreenElement !== tabDetail.current) setViewMode((mode) => mode === "screen" ? "window" : mode); };
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  // Esc leaves "fill the page", unless the live view has focus (then Esc goes to the website).
+  useEffect(() => {
+    if (viewMode !== "page") return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && event.target !== detailScreen.current) setViewMode("window"); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [viewMode]);
 
   // Scroll the page with the mouse wheel over the live view (needs a non-passive listener).
   useEffect(() => {
@@ -87,12 +116,13 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
     } catch (error) { onStatus(String(error)); }
   }
 
-  async function toggleFullscreen() {
+  async function changeViewMode(next: ViewMode) {
     const element = tabDetail.current;
-    if (!element) return;
+    if (!element || next === viewMode) return;
     try {
-      if (document.fullscreenElement === element) await document.exitFullscreen();
-      else await element.requestFullscreen();
+      if (next === "screen") await element.requestFullscreen();
+      else if (document.fullscreenElement === element) await document.exitFullscreen();
+      setViewMode(next);
       detailScreen.current?.focus();
     } catch {
       onStatus("Fullscreen is unavailable in this browser.");
@@ -156,33 +186,42 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
   const keepOpen = !!tab?.lifetime?.keepOpen;
   const canReopen = !!last?.tab.url && /^https?:\/\//i.test(last.tab.url);
   const screenStyle = screenRatio ? ({ "--screen-ratio": screenRatio } as CSSProperties) : undefined;
+  // A phone-shaped page is narrow, so on a desktop window its panels go beside it instead of below.
+  const [ratioWidth, ratioHeight] = (screenRatio ?? "").split("/").map(Number);
+  const portrait = isOpen && !!ratioWidth && !!ratioHeight && ratioWidth < ratioHeight;
 
   return (
     <>
-      <button id="back-button" type="button" className="back-button" onClick={showGrid}><BackIcon />All tabs</button>
-      <div className="detail-layout">
+      <div className={portrait ? "detail-layout portrait" : "detail-layout"} style={screenStyle}>
         <div className="detail-main">
-          <article id="tab-detail" className="tab-detail" ref={tabDetail}>
+          <article id="tab-detail" className={viewMode === "page" ? "tab-detail fill-page" : "tab-detail"} ref={tabDetail}>
             {isOpen && (
               <div className="browser-bar">
                 <button id="nav-back" type="button" className="icon-button" title="Back" aria-label="Back" disabled={navigating} onClick={() => void navigate("back")}><BackIcon /></button>
                 <button id="nav-forward" type="button" className="icon-button" title="Forward" aria-label="Forward" disabled={navigating} onClick={() => void navigate("forward")}><ForwardIcon /></button>
                 <button id="nav-reload" type="button" className={navigating ? "icon-button spinning" : "icon-button"} title="Reload" aria-label="Reload" disabled={navigating} onClick={() => void navigate("reload")}><ReloadIcon /></button>
                 <form className="address-form" onSubmit={go}>
-                  <input id="address-bar" className="address-input" type="text" inputMode="url" autoComplete="off" spellCheck={false} aria-label="Address" placeholder="Search or enter an address"
+                  <input id="address-bar" className="address-input" type="text" inputMode="url" autoComplete="off" spellCheck={false} aria-label="Address" placeholder="Search or enter an address" title={title}
                     value={address ?? tab.url} onChange={(event) => setAddress(event.target.value)} onFocus={(event) => event.currentTarget.select()}
                     onKeyDown={(event) => { if (event.key === "Escape") { setAddress(null); event.currentTarget.blur(); } }} />
                 </form>
-                <button id="close-tab-button" type="button" className="icon-button icon-button-danger" title="Close tab" aria-label="Close tab" onClick={() => void closeTab()}><CloseIcon /></button>
+                <button id="keep-open-button" type="button" className="icon-button keep-open" aria-pressed={keepOpen} onClick={toggleKeepOpen}
+                  title={keepOpen ? "Kept open: click to allow idle cleanup" : "Keep open"} aria-label={keepOpen ? "Kept open. Allow idle cleanup" : "Keep open"}><PinIcon /></button>
+                <div id="view-mode" className="view-mode" role="radiogroup" aria-label="View size">
+                  {VIEW_MODES.map(({ mode, label, Icon }) => (
+                    <button key={mode} type="button" role="radio" aria-checked={viewMode === mode} title={label} aria-label={label} onClick={() => void changeViewMode(mode)}><Icon /></button>
+                  ))}
+                </div>
+                <button id="close-tab-button" type="button" className="icon-button close-tab" title="Close tab" aria-label="Close tab" onClick={() => void closeTab()}><CloseIcon /></button>
               </div>
             )}
-            <div className="tab-meta">
-              <div className="favicon"><GlobeIcon /></div>
-              <div className="titles"><h2 id="detail-title">{title}</h2><p className="url" id="detail-url">{shown?.url ?? ""}</p></div>
-              <span className="session-pill" id="detail-session">{shown?.sessionKey ?? ""}</span>
-              <button id="keep-open-button" type="button" className="button button-secondary button-small" aria-pressed={keepOpen} hidden={!isOpen} onClick={toggleKeepOpen}>{keepOpen ? "Allow idle cleanup" : "Keep open"}</button>
-              <button id="fullscreen-button" type="button" className="button button-secondary button-small" aria-pressed={fullscreen} onClick={toggleFullscreen}><FullscreenIcon />{fullscreen ? "Exit fullscreen" : "Fullscreen"}</button>
-            </div>
+            {!isOpen && (
+              <div className="tab-meta">
+                <div className="favicon"><GlobeIcon /></div>
+                <div className="titles"><h2 id="detail-title">{title}</h2><p className="url" id="detail-url">{shown?.url ?? ""}</p></div>
+                <span className="session-pill" id="detail-session">{shown?.sessionKey ?? ""}</span>
+              </div>
+            )}
             <p id="lifetime-status" role="status">{isOpen ? lifetimeLabel(tab.lifetime) : ""}</p>
             <p id="navigation-error" role="alert" hidden={!isOpen || !tab.navigationError}>
               {isOpen && tab.navigationError ? "Page navigation failed. The tab is still open. " + tab.navigationError.split("\n")[0] : ""}
@@ -192,9 +231,8 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
               ref={detailScreen}
               className={shot.url ? "screen ready" : "screen"}
               type="button"
-              title="Click to interact; keystrokes go to the page while focused"
+              aria-label="Live view of the page: click to interact, keystrokes go to the page while focused"
               hidden={!isOpen}
-              style={screenStyle}
               onClick={(event) => { if (detailImg.current && detailScreen.current) void handleScreenClick(event.nativeEvent, detailImg.current, detailScreen.current); }}
               onKeyDown={(event) => handleScreenKeyDown(event.nativeEvent, onStatus)}
               // Space/Enter would otherwise "click" the focused <button> on keyup.
@@ -204,7 +242,7 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
               <img
                 id="detail-img"
                 ref={detailImg}
-                alt="Live browser tab screenshot"
+                alt=""
                 src={shot.url}
                 // Size the live view to the browser viewport's real aspect ratio (no letterboxing).
                 onLoad={(event) => {
@@ -224,8 +262,22 @@ export function DetailView({ userId, tabId, state, last, activity, activityListR
             <button id="save-transcript-button" type="button" className="button button-secondary" disabled={!last} onClick={saveTranscript}>Save last read text</button>
           </div>
         </div>
-        <ActivityPanel entries={activity} listRef={activityListRef} />
+        <div className="detail-below">
+          <SiblingTabs {...siblingTabs(state, userId, tabId, last)} />
+          <ActivityPanel entries={activity} listRef={activityListRef} />
+        </div>
       </div>
     </>
+  );
+}
+
+function SiblingTabs({ profile, tabs }: { profile: string | null; tabs: TabRef[] }) {
+  return (
+    <section className="detail-panel sibling-tabs" aria-label={profile ? `Other tabs in ${profile}` : "Other tabs in this session"}>
+      <h3 className="section-heading">{profile ? <>Other tabs in <span className="profile-pill">{profile}</span></> : "Other tabs in this session"} <span className="section-count">{tabs.length}</span></h3>
+      {tabs.length === 0
+        ? <p className="activity-empty">No other tabs open{profile ? ` in ${profile}` : ""}.</p>
+        : <div className="sibling-grid">{tabs.map(({ session, tab }) => <TabCard key={`${session.userId}:${tab.tabId}`} session={session} tab={tab} closed={false} />)}</div>}
+    </section>
   );
 }

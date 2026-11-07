@@ -54,22 +54,55 @@ describe("rendered markup", () => {
     expect(closedDetail).toMatch(/<div id="detail-missing" class="empty">\s*<h2>Tab closed<\/h2>/);
     expect(closedDetail).toContain("Closed by the idle timer");
     expect(closedDetail).toMatch(/<button id="detail-screen"[^>]*\bhidden\b/);
-    expect(closedDetail).toMatch(/<button id="keep-open-button"[^>]*\bhidden\b/);
+    // A closed tab has no browser bar (no keep open, no view size), just its title.
+    expect(closedDetail).not.toContain('id="keep-open-button"');
+    expect(closedDetail).not.toContain('id="view-mode"');
+    expect(closedDetail).toContain('<h2 id="detail-title">Old</h2>');
   });
 
   test("open tab shows its controls and navigation error", () => {
-    expect(openDetail).toContain(">Keep open</button>");
+    expect(openDetail).toMatch(/<button id="keep-open-button" type="button" class="icon-button keep-open" aria-pressed="false"[^>]*aria-label="Keep open"/);
     expect(openDetail).toContain("Page navigation failed. The tab is still open. boom<");
     expect(openDetail).toContain("Automatic idle cleanup disabled");
   });
 
-  test("fullscreen control is inside the fullscreen tab", () => {
-    expect(openDetail).toMatch(/<article id="tab-detail"[\s\S]*id="fullscreen-button"[\s\S]*<\/article>/);
+  test("one browser bar: address, keep open, view size, close", () => {
+    expect(openDetail).toMatch(/id="address-bar"[\s\S]*id="keep-open-button"[\s\S]*id="view-mode"[\s\S]*id="close-tab-button"/);
+    // The title only lives in the address bar tooltip now, not in a second row.
+    expect(openDetail).not.toContain('id="detail-title"');
+    expect(openDetail).toMatch(/id="address-bar"[^>]*title="Example"/);
+  });
+
+  test("the view size has three states, windowed by default, inside the fullscreen element", () => {
+    expect(openDetail).toMatch(/<article id="tab-detail"[\s\S]*id="view-mode"[\s\S]*<\/article>/);
+    expect(openDetail.match(/role="radio"/g)).toHaveLength(3);
+    expect(openDetail).toContain('role="radio" aria-checked="true" title="Windowed"');
+    expect(openDetail).toContain('title="Fill the page"');
+    expect(openDetail).toContain('title="Fullscreen"');
+    expect(read("styles.css")).toContain(".tab-detail.fill-page");
     expect(read("styles.css")).toContain(".tab-detail:fullscreen .screen");
   });
 
   test("hidden views stay hidden despite author display rules", () => {
     expect(read("styles.css")).toMatch(/\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  });
+
+  test("under the live view: the profile's other tabs, then activity", () => {
+    const a = { userId: "profile:a", lastAccess: "", profile: "work", tabs: [{ tabId: "a1", sessionKey: "x", url: "https://a.test/", title: "A1" }, { tabId: "a2", sessionKey: "y", url: "https://a.test/2", title: "A2" }] };
+    const b = { userId: "profile:b", lastAccess: "", profile: "home", tabs: [{ tabId: "b1", sessionKey: "x", url: "https://b.test/", title: "B1" }] };
+    const html = renderToStaticMarkup(h(DetailView, { ...detailProps, state: { ...state, sessions: [a, b] }, userId: "profile:a", tabId: "a1" }));
+    expect(html).toMatch(/<div class="detail-below"><section class="detail-panel sibling-tabs"[\s\S]*<aside class="detail-panel activity"/);
+    expect(html).toContain('<span class="profile-pill">work</span>');
+    expect(html).toContain("<h2>A2</h2>");
+    expect(html).not.toContain("<h2>A1</h2>");
+    expect(html).not.toContain("<h2>B1</h2>");
+    expect(openDetail).toContain("No other tabs open.");
+  });
+
+  test("the live view has no hover tooltip or alt text", () => {
+    expect(openDetail).toMatch(/<button id="detail-screen"(?![^>]*title=)[^>]*>/);
+    expect(openDetail).toContain('<img id="detail-img" alt=""');
+    expect(grid).toContain('<img alt=""');
   });
 
   test("has the activity log panel", () => {
@@ -105,7 +138,9 @@ describe("rendered markup", () => {
     for (const file of sources) {
       expect(read(file)).not.toMatch(/[←→↑↓◢◣◤◥●▶◀]|&larr;|&rarr;/);
     }
-    expect(openDetail).toMatch(/<button id="back-button"[^>]*><svg class="icon"/);
+    expect(openDetail).toMatch(/<button id="nav-back"[^>]*><svg class="icon"/);
+    // The sidebar is the way back to the tab list, so no separate back button.
+    expect(openDetail).not.toContain('id="back-button"');
   });
 
   test("every id styled in styles.css exists in the rendered page", () => {

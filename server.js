@@ -164,6 +164,8 @@ function recordTabActivity(req, res, ms) {
   const source = req.get(SOURCE_HEADER) === 'dashboard' ? 'dashboard' : 'agent';
   // The dashboard polls screenshots every few seconds; that's noise, not activity.
   if (source === 'dashboard' && parsed.action === 'screenshot') return;
+  // Same for the viewing lease it renews on every poll; only a Keep open toggle is a real action.
+  if (source === 'dashboard' && parsed.action === 'lifetime' && req.body?.keepOpen === undefined) return;
   activityLog.record(parsed.tabId, {
     action: parsed.action,
     detail: summarizeCall(parsed.action, req.body || {}, req.query || {}),

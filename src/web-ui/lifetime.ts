@@ -2,7 +2,8 @@ export type Lifetime = { keepOpen: boolean; protected: boolean; expiresAt: numbe
 export function lifetimeLabel(lifetime?: Lifetime, now = Date.now()): string {
   if (!lifetime) return "";
   if (lifetime.keepOpen) return "Kept open until you close it";
-  if (lifetime.protected) return "Protected while viewing or waiting for a reply";
+  // Protected (someone is viewing it, or it waits for a reply) is the normal state here: nothing to say.
+  if (lifetime.protected) return "";
   if (lifetime.expiresAt === null) return "Automatic idle cleanup disabled";
   const seconds = Math.max(0, Math.ceil((lifetime.expiresAt - now) / 1000));
   return seconds <= 60 ? `Closes in ${seconds}s, choose Keep open to prevent this` : `Idle cleanup in ${Math.ceil(seconds / 60)} min`;

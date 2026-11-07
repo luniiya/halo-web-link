@@ -70,4 +70,29 @@ markup, `[hidden]{display:none!important}`, `.tab-detail:fullscreen .screen`, no
 - Deleted Header.tsx and ProfileList.tsx (the deletion got staged in git by accident with `git rm --cached`).
 - CSS: `--sidebar` 15rem / 5rem on `:root.sidebar-collapsed`; color popover is `position: fixed` beside the
   sidebar; `.activity` sticky top 28px; <750px the sidebar is a sticky horizontal icon bar (`--sidebar: 0px`).
-- markup.test.ts rewritten for this; web-ui 83/83, typecheck clean. Not yet seen by the user in the browser.
+- markup.test.ts rewritten for this; web-ui 83/83, typecheck clean.
+- **User approved it on 2026-11-07** after seeing it live ("YOU COOKED SO HARD"). Treat this layout as the baseline.
+
+## Tab detail view (2026-11-07, user request)
+- Live view on top at full width (`.detail-layout` max 1280px), then `.detail-below`: left = other open tabs of the
+  SAME profile as TabCards (`siblingTabs()` in DetailView.tsx; same session when no profile; App queues their
+  thumbnails), right = Activity. Both use `.detail-panel`. Stacks under 1100px.
+- Activity log no longer records the dashboard's viewing-lease heartbeat (`server.js` recordTabActivity); Keep open
+  toggles show as "keep open" / "allow idle close" (`summarizeCall`).
+- "Protected while viewing or waiting for a reply" removed (`lifetimeLabel` returns "" when protected); the
+  "Closes in Ns" warning stays.
+
+## One browser bar + 3 view sizes (2026-11-07, user request)
+- Open tab: a single bar: back, forward, reload, address (tooltip = page title), `#keep-open-button` (pin icon,
+  aria-pressed, rotates when on), `#view-mode` (segmented radiogroup), `#close-tab-button`. The title/URL row
+  (`.tab-meta`) only shows for closed tabs now.
+- View mode `ViewMode = "window" | "page" | "screen"`: windowed; "Fill the page" = `.tab-detail.fill-page`
+  (position fixed, inset 0, Esc exits); true browser fullscreen via requestFullscreen (leaving it drops back to window).
+- Close hover is deliberately destructive-looking: red fill, X spins, shake + pulsing red ring.
+- The hover popup on the live view was the `title` on `#detail-screen`, not the alt; now aria-label only, imgs `alt=""`.
+- Content is centered: `main > section { max-width: 1280px; margin-inline: auto }` (start page and tab detail), not anchored left.
+- Profile dialog is wide (max 1040px): Identity column | Machine details column, switches in a grid underneath; stacks under 860px. No more collapsible <details>.
+- Sidebar foot tools use `justify-content: space-between` (equal gaps), no margin-left:auto on collapse.
+- Tried putting other tabs + activity beside the live view on wide screens; user rejected it ("it should always be below"). Instead the detail section is min-height 100vh minus main padding and the two panels below flex to fill what the live view leaves (min 220px), same height, scrolling inside, so the page does not scroll.
+- Exception (user asked): when the streamed page is phone-shaped (ratio w<h) and the window is >=1100px, `.detail-layout.portrait` puts the panels beside the live view, stacked, as tall as it.
+- Removed the "All tabs" back button above the tab view (sidebar covers it).
