@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Header } from "../../src/web-ui/components/Header.tsx";
-import { browserStatus, GridView } from "../../src/web-ui/components/GridView.tsx";
+import { AgentPrompt } from "../../src/web-ui/components/AgentPrompt.tsx";
+import { GridView, timeAgo } from "../../src/web-ui/components/GridView.tsx";
+import { browserStatus, Sidebar } from "../../src/web-ui/components/Sidebar.tsx";
 import { DetailView } from "../../src/web-ui/components/DetailView.tsx";
+import { ProfileDialog } from "../../src/web-ui/components/ProfileDialog.tsx";
+import { TrashDialog } from "../../src/web-ui/components/TrashDialog.tsx";
 import type { ActivityEntry } from "../../src/web-ui/activity.ts";
 import type { ClosedEntry, State } from "../../src/web-ui/types.ts";
 
@@ -21,12 +24,14 @@ const activity: ActivityEntry[] = [{ seq: 1, ts: "2026-01-01T00:00:00Z", action:
 const noop = () => {};
 const detailProps = { state, activity, onStatus: noop, refresh: async () => {} };
 
-const header = renderToStaticMarkup(h(Header, { theme: "auto", onThemeChange: noop, authHidden: false, onAuth: noop,
-  connect: { mcpUrl: "http://localhost:9377/mcp", authRequired: false }, profiles: ["main", "work"] }));
-const grid = renderToStaticMarkup(h(GridView, { hidden: false, state, open: [{ session, tab: session.tabs[0]! }], closed: [last] }));
+const sidebarProps = { profiles: [], openCount: 1, filter: null, onFilter: noop, state, theme: "auto" as const, onThemeChange: noop,
+  authHidden: false, onAuth: noop, collapsed: false, onToggleCollapsed: noop };
+const sidebar = renderToStaticMarkup(h(Sidebar, sidebarProps));
+const connect = h(AgentPrompt, { mcpUrl: "http://localhost:9377/mcp", authRequired: false, profiles: ["main", "work"] });
+const grid = renderToStaticMarkup(h(GridView, { hidden: false, state, open: [{ session, tab: session.tabs[0]! }], closed: [last], actions: connect }));
 const openDetail = renderToStaticMarkup(h(DetailView, { ...detailProps, userId: session.userId, tabId: "t1" }));
 const closedDetail = renderToStaticMarkup(h(DetailView, { ...detailProps, userId: session.userId, tabId: "t2", last }));
-const html = [header, grid, openDetail, closedDetail].join("\n");
+const html = [sidebar, grid, openDetail, closedDetail].join("\n");
 
 describe("index.html", () => {
   test("is a shell that loads the React client", () => {
@@ -73,10 +78,26 @@ describe("rendered markup", () => {
     expect(openDetail).toMatch(/<li class="failed from-dashboard">/);
   });
 
-  test("grid cards keep their classes and open/closed sections", () => {
+  test("open tabs are cards, closed tabs a compact list", () => {
     expect(grid).toMatch(/<section id="grid-open"[^>]*><button class="tab-card"/);
-    expect(grid).toMatch(/<section id="grid-closed"[^>]*><button class="tab-card closed"/);
     expect(grid).toContain('<span class="user">user-abcde…</span>');
+    expect(grid).toMatch(/<ul id="closed-list"[^>]*><li><button type="button" class="closed-row" title="Closed by the idle timer">/);
+    expect(grid).toContain('<span class="closed-title">Old</span>');
+    expect(grid).not.toContain("tab-card closed");
+    expect(grid).not.toContain('id="closed-toggle"');
+  });
+
+  test("long closed lists collapse behind Show all", () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ ...last, tab: { ...last.tab, tabId: `c${i}` } }));
+    const html = renderToStaticMarkup(h(GridView, { hidden: false, state, open: [], closed: many }));
+    expect(html.match(/class="closed-row"/g)).toHaveLength(8);
+    expect(html).toContain(">Show all (12)</button>");
+  });
+
+  test("closed times read as time ago", () => {
+    expect(timeAgo(0, 30_000)).toBe("just now");
+    expect(timeAgo(0, 5 * 60_000)).toBe("5 min ago");
+    expect(timeAgo(0, 3 * 3_600_000)).toBe("3 h ago");
   });
 
   test("uses SVG icons, not text glyphs, for arrows and markers", () => {
@@ -104,89 +125,114 @@ describe("profiles", () => {
     { id: "p1", name: "shopping", kind: "named" as const, createdAt: 1, lastUsedAt: 1, userAgent: "Mozilla/5.0 Firefox/150.0", browserRunning: true, tabs: 1 },
     { id: "p2", name: "burner-abc123", kind: "burner" as const, createdAt: 1, lastUsedAt: 1, userAgent: null, browserRunning: false, tabs: 0 },
   ];
-  const withProfiles = renderToStaticMarkup(h(GridView, {
-    hidden: false,
-    state: { ...state, sessions: [session, profileSession], profiles },
-    open: [{ session: profileSession, tab: profileSession.tabs[0]! }],
-    closed: [],
-    onDeleteProfile: noop,
+  const fullState = { ...state, sessions: [session, profileSession], profiles };
+  const shopping = renderToStaticMarkup(h(GridView, {
+    hidden: false, state: fullState, filter: "shopping",
+    open: [{ session, tab: session.tabs[0]! }, { session: profileSession, tab: profileSession.tabs[0]! }],
+    closed: [], onDeleteProfile: noop, onConfigureProfile: noop, onOpenTab: async () => true,
   }));
+  const nav = renderToStaticMarkup(h(Sidebar, { ...sidebarProps, profiles, filter: "shopping", onNewProfile: noop, onConfigureProfile: noop, onShowTrash: noop }));
 
   test("profile tabs show their profile instead of the session id", () => {
-    expect(withProfiles).toContain('<span class="profile-pill" title="Browser profile">shopping</span>');
+    expect(shopping).toContain('<span class="profile-pill" title="Browser profile">shopping</span>');
   });
 
-  test("lists profiles with kind, user agent, state and a trash action", () => {
-    expect(withProfiles).toContain('id="profile-list"');
-    expect(withProfiles).toContain('<span class="profile-kind burner">burner</span>');
-    expect(withProfiles).toContain("Mozilla/5.0 Firefox/150.0");
-    expect(withProfiles).toContain("1 tab · running");
-    // The default "main" profile's trash button is shown but disabled.
-    expect(withProfiles.match(/class="profile-trash"/g)).toHaveLength(3);
-    expect(withProfiles).toContain('class="profile-trash" disabled="" aria-label="main can&#x27;t be deleted"');
-    // Hovering it swaps the trash for a deny icon.
-    expect(withProfiles).toContain('class="trash-deny"');
-    expect(withProfiles).toContain('aria-label="Move shopping to the trash"');
+  test("the sidebar lists every profile, marks the picked one, and offers configure", () => {
+    expect(nav).toContain('id="profile-nav"');
+    expect(nav.match(/class="nav-row"/g)).toHaveLength(profiles.length);
+    expect(nav).toMatch(/class="nav-item active" aria-current="page" title="shopping, running"/);
+    expect(nav).toContain('<span class="nav-avatar burner" aria-hidden="true">B</span>');
+    expect(nav).toContain('class="nav-running"');
+    expect(nav).toContain('aria-label="Configure shopping"');
+    expect(nav).toContain('id="new-profile-button"');
+    expect(nav).toContain('id="show-trash-button"');
+    // All tabs is not active while a profile is picked.
+    expect(nav).toMatch(/<button id="all-tabs-button" type="button" class="nav-item" title="All tabs">/);
   });
 
-  test("profiles are created and configured through a popup", () => {
-    const withCreate = renderToStaticMarkup(h(GridView, { hidden: false, state: { ...state, profiles: profiles.map((p) => ({ ...p, screen: { width: 1920, height: 1080 } })) }, open: [], closed: [],
-      onCreateProfile: async () => true, onConfigureProfile: async () => true, onRegenerateProfile: async () => true,
-      loadTrash: async () => [], onRestoreProfile: async () => true }));
-    expect(withCreate).toContain('id="new-profile-button"');
-    expect(withCreate).toContain('<dialog id="profile-dialog"');
-    expect(withCreate).toContain('<option value="1920x1080" selected="">1920 × 1080 (default)</option>');
-    expect(withCreate).toContain("1920×1080");
-    // Configure (settings icon) on every row, and the machine details live in the popup.
-    expect(withCreate.match(/class="profile-action profile-configure"/g)).toHaveLength(profiles.length);
-    expect(withCreate).toContain('aria-label="Configure shopping"');
-    expect(withCreate).not.toContain("Configure</button>");
-    expect(withCreate).toContain("Machine details");
-    expect(withCreate).toContain('id="profile-gpu"');
-    expect(withCreate).not.toContain(">New fingerprint<");
+  test("nothing is active in the tab detail view", () => {
+    const detailNav = renderToStaticMarkup(h(Sidebar, { ...sidebarProps, profiles, filter: undefined }));
+    expect(detailNav).not.toContain("nav-item active");
   });
 
-  test("the trash opens from the profiles header and lists nothing until loaded", () => {
-    const html = renderToStaticMarkup(h(GridView, { hidden: false, state: { ...state, profiles }, open: [], closed: [], loadTrash: async () => [], onRestoreProfile: async () => true }));
-    expect(html).toContain('id="show-trash-button"');
-    expect(html).toContain('<dialog id="trash-dialog"');
-    expect(html).toContain("then they are erased for good");
-    expect(html).not.toMatch(/delete (forever|permanently)/i);
+  test("a picked profile narrows the start page and shows its details", () => {
+    expect(shopping).toContain(">shopping</h2>");
+    expect(shopping).toContain('id="profile-details"');
+    expect(shopping).toContain("Mozilla/5.0 Firefox/150.0");
+    expect(shopping).toContain("1 tab · running");
+    expect(shopping).toContain('aria-label="Move shopping to the trash"');
+    expect(shopping).toContain('aria-label="Configure shopping"');
+    // Only shopping's tab, and the new tab bar defaults to it.
+    expect(shopping.match(/class="tab-card"/g)).toHaveLength(1);
+    expect(shopping).toContain('<option value="shopping" selected="">shopping</option>');
   });
 
-  test("the section is omitted when there are no profiles", () => {
-    expect(grid).not.toContain('id="profile-list"');
+  test("the default profile can't be trashed", () => {
+    const main = renderToStaticMarkup(h(GridView, { hidden: false, state: fullState, filter: "main", open: [], closed: [], onDeleteProfile: noop }));
+    expect(main).toContain('class="profile-trash" disabled="" aria-label="main can&#x27;t be deleted"');
+    expect(main).toContain('class="trash-deny"');
+    expect(main).toContain("No open tabs in main.");
+  });
+
+  test("a picked burner can be chosen in the new tab bar", () => {
+    const burner = renderToStaticMarkup(h(GridView, { hidden: false, state: fullState, filter: "burner-abc123", open: [], closed: [], onOpenTab: async () => true }));
+    expect(burner).toContain('<option value="burner-abc123" selected="">burner-abc123</option>');
+    expect(burner).toContain(">Burner profile</p>");
+  });
+
+  test("the profile and trash dialogs render", () => {
+    const dialog = renderToStaticMarkup(h(ProfileDialog, { mode: { kind: "create" }, onClose: noop, onSubmit: async () => true }));
+    expect(dialog).toContain('<dialog id="profile-dialog"');
+    expect(dialog).toContain('<option value="1920x1080" selected="">1920 × 1080 (default)</option>');
+    expect(dialog).toContain("Machine details");
+    expect(dialog).toContain('id="profile-gpu"');
+    expect(dialog).not.toContain(">New fingerprint<");
+    const trash = renderToStaticMarkup(h(TrashDialog, { open: false, onClose: noop, load: async () => [], onRestore: async () => true }));
+    expect(trash).toContain('<dialog id="trash-dialog"');
+    expect(trash).toContain("then they are erased for good");
+    expect(trash).not.toMatch(/delete (forever|permanently)/i);
+  });
+
+  test("no profile details on All tabs", () => {
+    expect(grid).not.toContain('id="profile-details"');
   });
 });
 
 describe("connect your agent", () => {
-  test("lives in the header with a profile picker, copy button and preview popup", () => {
-    expect(header).toContain('<option value="work">work</option>');
-    expect(header).toContain(">Click to copy prompt</span>");
-    expect(header).toContain(">Connect your agent</span>");
-    expect(header).toContain('<dialog id="agent-prompt-dialog"');
-    expect(header).toContain("Your dedicated browser profile is `main`");
-    expect(header).toContain("http://localhost:9377/mcp");
-  });
-
-  test("is not on the main page", () => {
-    expect(grid).not.toContain("copy-agent-prompt");
+  test("sits in the start page head with a profile picker, copy button and preview popup", () => {
+    expect(grid).toMatch(/<div class="page-head">[\s\S]*class="connect-agent"/);
+    expect(grid).toContain('<option value="work">work</option>');
+    expect(grid).toContain(">Click to copy prompt</span>");
+    expect(grid).toContain(">Connect your agent</span>");
+    expect(grid).toContain('<dialog id="agent-prompt-dialog"');
+    expect(grid).toContain("Your dedicated browser profile is `main`");
+    expect(grid).toContain("http://localhost:9377/mcp");
   });
 });
 
 describe("theme button", () => {
   test("shows the current theme as a single icon button", () => {
-    expect(header).toContain('id="theme-button"');
-    expect(header).toContain('title="Theme: Auto (click for Light)"');
-    expect(header).not.toContain("<select id=\"theme-select\"");
+    expect(sidebar).toContain('id="theme-button"');
+    expect(sidebar).toContain('title="Theme: Auto (click for Light)"');
+    expect(sidebar).not.toContain("<select id=\"theme-select\"");
+  });
+});
+
+describe("sidebar", () => {
+  test("has the collapse toggle and the access key button", () => {
+    expect(sidebar).toMatch(/id="collapse-button"[^>]*aria-expanded="true"/);
+    expect(sidebar).toContain('aria-label="Collapse sidebar"');
+    expect(renderToStaticMarkup(h(Sidebar, { ...sidebarProps, collapsed: true }))).toContain('aria-label="Expand sidebar"');
+    expect(sidebar).toMatch(/<button id="auth-button"[^>]*><svg class="icon"/);
+    expect(renderToStaticMarkup(h(Sidebar, { ...sidebarProps, authHidden: true }))).toMatch(/id="auth-button"[^>]*hidden=""/);
   });
 });
 
 describe("browser status", () => {
   const profile = { id: "p", name: "work", kind: "named" as const, createdAt: 1, lastUsedAt: 1, userAgent: null, browserRunning: false, tabs: 0 };
 
-  test("sits in the summary strip", () => {
-    expect(grid).toContain('id="browser-status"');
+  test("sits in the sidebar foot", () => {
+    expect(sidebar).toMatch(/<div class="sidebar-foot"><div id="browser-status" class="browser-status running"/);
   });
 
   test("idle when the core answers but no browser runs (no more endless warming up)", () => {

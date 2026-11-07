@@ -1,21 +1,21 @@
 #!/usr/bin/env node
-// bloom-web-link MCP server
+// halo-web-link MCP server
 //
-// Standalone Model Context Protocol server that exposes the bloom-web-link
+// Standalone Model Context Protocol server that exposes the halo-web-link
 // REST API (default http://localhost:9377) as MCP tools. Tool names, schemas,
 // REST routes, request bodies, auth, and response shaping are imported from
-// mcp/lib/tool-contracts.mjs — the SAME source of truth the OpenClaw plugin
-// (plugin.ts) uses — so behavior is identical whether an agent reaches bwl
+// mcp/lib/tool-contracts.mjs, the SAME source of truth the OpenClaw plugin
+// (plugin.ts) uses, so behavior is identical whether an agent reaches hwl
 // via OpenClaw or MCP. Drift is structurally impossible.
 //
 // Transport: stdio (Claude Code / Codex / agy / Cursor / opencode spawn this as
-// a child process). The bwl REST server itself must be running (npm start) —
+// a child process). The hwl REST server itself must be running (npm start):
 // this server only forwards calls, it does not launch the browser.
 //
 // Auth:
-//   - BWL_ACCESS_KEY (global): forwarded as `Authorization: Bearer` on every
+//   - HWL_ACCESS_KEY (global): forwarded as `Authorization: Bearer` on every
 //     request so globally-authenticated REST servers accept MCP traffic.
-//   - BWL_API_KEY (cookie import): forwarded as `Authorization: Bearer` on
+//   - HWL_API_KEY (cookie import): forwarded as `Authorization: Bearer` on
 //     the cookie-import route only.
 
 import { randomUUID } from "node:crypto";
@@ -35,27 +35,27 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Version from this package's own package.json (single source — no hardcoded
-// duplicate). mcp/ is an independently installable package (@luniiya/bloom-web-link-mcp)
+// Version from this package's own package.json (single source, no hardcoded
+// duplicate). mcp/ is an independently installable package (@luniiya/halo-web-link-mcp)
 // with its own manifest, so this reads locally rather than the parent repo's.
 const VERSION = JSON.parse(
   readFileSync(join(__dirname, "package.json"), "utf8")
 ).version;
 
 // Server config (apiKey / accessKey / cookiesDir / port). The standalone
-// package reads only its own environment settings; BWL_BASE_URL overrides
+// package reads only its own environment settings; HWL_BASE_URL overrides
 // the derived local URL.
 const CONFIG = loadMcpConfig();
-const BASE_URL = process.env.BWL_BASE_URL || `http://localhost:${CONFIG.port}`;
+const BASE_URL = process.env.HWL_BASE_URL || `http://localhost:${CONFIG.port}`;
 
-// Per-MCP-server userId so each host session gets an isolated bwl session
+// Per-MCP-server userId so each host session gets an isolated hwl session
 // (cookie/storage partition). Falls back to a random id.
-const USER_ID = process.env.BWL_USER_ID || `mcp-${randomUUID()}`;
+const USER_ID = process.env.HWL_USER_ID || `mcp-${randomUUID()}`;
 // sessionKey partitions tabs within a user (matches plugin.ts fallback "default").
-const SESSION_KEY = process.env.BWL_SESSION_KEY || "default";
+const SESSION_KEY = process.env.HWL_SESSION_KEY || "default";
 
 const server = new Server(
-  { name: "bloom-web-link", version: VERSION },
+  { name: "halo-web-link", version: VERSION },
   { capabilities: { tools: {} } }
 );
 
@@ -89,7 +89,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
   } catch (err) {
     return {
       isError: true,
-      content: [{ type: "text", text: `bwl error: ${err.message}` }],
+      content: [{ type: "text", text: `hwl error: ${err.message}` }],
     };
   }
 });
@@ -100,5 +100,5 @@ await server.connect(transport);
 // process alive and consuming requests even when no message arrives instantly.
 process.stdin.resume();
 console.error(
-  `[bloom-web-link-mcp] v${VERSION} connected → ${BASE_URL} (user=${USER_ID})`
+  `[halo-web-link-mcp] v${VERSION} connected → ${BASE_URL} (user=${USER_ID})`
 );

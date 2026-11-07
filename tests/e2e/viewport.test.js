@@ -47,7 +47,7 @@ describe('Viewport', () => {
     try {
       const { tabId } = await client.createTab(`${testSiteUrl}/`);
 
-      // Width too small — client throws on non-200
+      // Width too small, client throws on non-200
       await expect(client.viewport(tabId, { width: 50, height: 720 }))
         .rejects.toThrow('width and height required');
     } finally {
@@ -64,7 +64,7 @@ describe('Viewport', () => {
       // Set to wide desktop
       await client.viewport(tabId, { width: 1920, height: 1080 });
 
-      // Set to narrow mobile — if the page has responsive CSS,
+      // Set to narrow mobile, if the page has responsive CSS,
       // snapshot content may differ (we just verify the call succeeds)
       const result = await client.viewport(tabId, { width: 320, height: 568 });
       expect(result.ok).toBe(true);

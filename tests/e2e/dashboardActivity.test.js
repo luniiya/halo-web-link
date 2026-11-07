@@ -69,7 +69,7 @@ describe('tab activity log', () => {
     const client = createClient(serverUrl);
     try {
       const { tabId } = await client.createTab(`${testSiteUrl}/`);
-      const dashboard = { 'Content-Type': 'application/json', 'X-BWL-Source': 'dashboard' };
+      const dashboard = { 'Content-Type': 'application/json', 'X-HWL-Source': 'dashboard' };
       await fetch(`${serverUrl}/tabs/${tabId}/screenshot?userId=${client.userId}`, { headers: dashboard });
       await fetch(`${serverUrl}/tabs/${tabId}/press`, {
         method: 'POST', headers: dashboard, body: JSON.stringify({ userId: client.userId, key: 'Escape' }),

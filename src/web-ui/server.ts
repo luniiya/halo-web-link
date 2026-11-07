@@ -6,7 +6,7 @@ import { internalHeaders, isAuthorized, json, unauthorized } from "../http.ts";
 async function coreFetch(config: ContainerConfig, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = internalHeaders(config, init.headers);
   // Lets the core label these calls as the dashboard's in a tab's activity log.
-  headers.set("X-BWL-Source", "dashboard");
+  headers.set("X-HWL-Source", "dashboard");
   return fetch(`http://${config.coreHost}:${config.corePort}${path}`, { ...init, headers });
 }
 
@@ -26,7 +26,7 @@ function identity(input: IdentityInput): Record<string, string> {
 
 // Assets are read and the client rebuilt on every request, so edits to
 // src/web-ui (bind-mounted by compose.yaml) show up on reload without a
-// container rebuild. Only the page load pays this — polling hits /api/*.
+// container rebuild. Only the page load pays this, polling hits /api/*.
 async function buildClient(root: URL): Promise<string> {
   const build = await Bun.build({ entrypoints: [new URL("client.tsx", root).pathname], target: "browser", minify: true });
   if (!build.success || !build.outputs[0]) throw new Error(`Web UI build failed: ${build.logs.join("\n")}`);
@@ -64,6 +64,35 @@ export async function startWebUi(config: ContainerConfig): Promise<Bun.Server> {
         const input = await request.json() as { userId?: string; url?: string; sessionKey?: string };
         if (!input.userId || !input.url || !/^https?:\/\//i.test(input.url)) return json({ error: "userId and an http(s) URL required" }, 400);
         return coreFetch(config, "/tabs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: input.userId, sessionKey: input.sessionKey || "default", url: input.url }) });
+      }
+      // User-driven tabs: the dashboard opens, navigates and closes tabs itself, like an agent would.
+      if (url.pathname === "/api/tabs/new" && request.method === "POST") {
+        const input = await request.json() as { profile?: string; url?: string };
+        if (!input.url || !/^https?:\/\//i.test(input.url)) return json({ error: "an http(s) URL is required" }, 400);
+        if (input.profile !== undefined && typeof input.profile !== "string") return json({ error: "profile must be a string" }, 400);
+        return coreFetch(config, "/tabs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile: input.profile || undefined, sessionKey: "dashboard", url: input.url }) });
+      }
+      if (url.pathname === "/api/tabs/close" && request.method === "POST") {
+        const input = await request.json() as { userId?: string; tabId?: string };
+        if (!input.userId || !input.tabId) return json({ error: "userId and tabId are required" }, 400);
+        return coreFetch(config, `/tabs/${encodeURIComponent(input.tabId)}?${new URLSearchParams({ userId: input.userId })}`, { method: "DELETE" });
+      }
+      if (url.pathname === "/api/navigate" && request.method === "POST") {
+        const input = await request.json() as { userId?: string; tabId?: string; action?: string; url?: string };
+        if (!input.userId || !input.tabId) return json({ error: "userId and tabId are required" }, 400);
+        const tabPath = `/tabs/${encodeURIComponent(input.tabId)}`;
+        const post = (path: string, body: object) => coreFetch(config, path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: input.userId, ...body }) });
+        if (input.action === "back" || input.action === "forward") return post(`${tabPath}/${input.action}`, {});
+        if (input.action === "reload") return post(`${tabPath}/refresh`, {});
+        if (input.action === "go" && input.url && /^https?:\/\//i.test(input.url)) return post(`${tabPath}/navigate`, { url: input.url });
+        return json({ error: "action must be back, forward, reload, or go with an http(s) url" }, 400);
+      }
+      if (url.pathname === "/api/scroll" && request.method === "POST") {
+        const input = await request.json() as { userId?: string; tabId?: string; direction?: string; amount?: number };
+        if (!input.userId || !input.tabId || !["up", "down", "left", "right"].includes(input.direction ?? "") || !Number.isFinite(input.amount) || input.amount! <= 0) {
+          return json({ error: "userId, tabId, direction (up/down/left/right) and a positive amount are required" }, 400);
+        }
+        return coreFetch(config, `/tabs/${encodeURIComponent(input.tabId)}/scroll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: input.userId, direction: input.direction, amount: Math.min(Math.round(input.amount!), 5000) }) });
       }
       if (url.pathname === "/api/profiles/create" && request.method === "POST") {
         const input = await request.json() as { name?: string; burner?: boolean; settings?: unknown } & IdentityInput;

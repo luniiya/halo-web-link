@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "bloom-web-link",
+    "title": "halo-web-link",
     "version": "1.16.0",
     "description": "Anti-detection browser automation server for AI agents. Accessibility snapshots, element refs, session isolation, cookie import, proxy rotation, and structured logs.",
     "license": {
@@ -10,7 +10,7 @@
     },
     "contact": {
       "name": "Luniiya",
-      "url": "https://github.com/luniiya/bloom-web-link"
+      "url": "https://github.com/luniiya/halo-web-link"
     }
   },
   "servers": [
@@ -58,12 +58,12 @@
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Bearer token matching BWL_API_KEY (per-route auth for sensitive endpoints like cookie import and traces)."
+        "description": "Bearer token matching HWL_API_KEY (per-route auth for sensitive endpoints like cookie import and traces)."
       },
       "AccessKeyAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Bearer token matching BWL_ACCESS_KEY. When set, gates all routes except /health, cookie import, and /stop. Acts as a superkey -- also accepted by endpoints that normally require BWL_API_KEY."
+        "description": "Bearer token matching HWL_ACCESS_KEY. When set, gates all routes except /health, cookie import, and /stop. Acts as a superkey -- also accepted by endpoints that normally require HWL_API_KEY."
       }
     },
     "schemas": {
@@ -1082,7 +1082,7 @@
           "Interaction"
         ],
         "summary": "Run multiple actions in one round trip",
-        "description": "Executes a sequence of click/type/wait/scroll/navigate/read_text actions against one tab in a\nsingle request, so a multi-step interaction (e.g. click a field, type into it, wait for a\nresult) costs one round trip instead of one per action. Stops at the first failing action\nunless continueOnError is true. Refs are refreshed after each click, type, and navigation,\npreserving DOM identity across dynamic reordering before the next action runs.\nThis is a simplified/faster path: it does not include the Google-SERP-specific handling that\nthe individual bwl_click/bwl_navigate tools have, so prefer those for search result pages.\n",
+        "description": "Executes a sequence of click/type/wait/scroll/navigate/read_text actions against one tab in a\nsingle request, so a multi-step interaction (e.g. click a field, type into it, wait for a\nresult) costs one round trip instead of one per action. Stops at the first failing action\nunless continueOnError is true. Refs are refreshed after each click, type, and navigation,\npreserving DOM identity across dynamic reordering before the next action runs.\nThis is a simplified/faster path: it does not include the Google-SERP-specific handling that\nthe individual hwl_click/hwl_navigate tools have, so prefer those for search result pages.\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1278,7 +1278,7 @@
           "Interaction"
         ],
         "summary": "Attach a file to an upload control",
-        "description": "Attaches files from the configured upload directory without going through the native OS file dialog. Set BWL_UPLOADS_DIR to a directory that contains the files (default: ~/.bwl/uploads). Two strategies are tried in order: (1) if an <input type=\"file\"> is already present, call Playwright setInputFiles on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger element (ref or selector) via keyboard (focus + Enter) then a forced click as fallback, and call setFiles on the resulting chooser. Each path must be an absolute path that resolves inside the configured upload directory.\n",
+        "description": "Attaches files from the configured upload directory without going through the native OS file dialog. Set HWL_UPLOADS_DIR to a directory that contains the files (default: ~/.hwl/uploads). Two strategies are tried in order: (1) if an <input type=\"file\"> is already present, call Playwright setInputFiles on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger element (ref or selector) via keyboard (focus + Enter) then a forced click as fallback, and call setFiles on the resulting chooser. Each path must be an absolute path that resolves inside the configured upload directory.\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1304,7 +1304,7 @@
                     "type": "string"
                   },
                   "path": {
-                    "description": "Absolute path, or array of paths, that resolves within BWL_UPLOADS_DIR.",
+                    "description": "Absolute path, or array of paths, that resolves within HWL_UPLOADS_DIR.",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1669,7 +1669,7 @@
           "Interaction"
         ],
         "summary": "Set the page viewport size",
-        "description": "Physically resizes the page via Playwright's `page.setViewportSize`, triggering a real layout reflow. Use for responsive testing — `window.resizeTo()` is a no-op on non-popup windows.\n",
+        "description": "Physically resizes the page via Playwright's `page.setViewportSize`, triggering a real layout reflow. Use for responsive testing: `window.resizeTo()` is a no-op on non-popup windows.\n",
         "parameters": [
           {
             "name": "tabId",

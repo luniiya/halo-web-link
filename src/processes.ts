@@ -7,9 +7,9 @@ export function startCore(config: ContainerConfig): Bun.Subprocess {
     env: {
       ...config.coreEnv,
       NODE_ENV: "production",
-      BWL_PORT: String(config.corePort),
-      BWL_BIND_HOST: config.coreHost,
-      BWL_ACCESS_KEY: config.internalAccessKey,
+      HWL_PORT: String(config.corePort),
+      HWL_BIND_HOST: config.coreHost,
+      HWL_ACCESS_KEY: config.internalAccessKey,
     },
     stdin: "ignore",
     stdout: "inherit",
@@ -32,5 +32,5 @@ export async function waitForCore(baseUrl: string, accessKey: string, timeoutMs 
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`Bloom Web Link core did not become ready: ${lastError}`);
+  throw new Error(`Halo Web Link core did not become ready: ${lastError}`);
 }

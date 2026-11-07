@@ -96,7 +96,7 @@ describe('Tab Lifecycle Contract', () => {
       try {
         const { tabId } = await client.createTab(`${testSiteUrl}/links`);
 
-        // Perform multiple tab operations — session should not expire
+        // Perform multiple tab operations, session should not expire
         await new Promise(r => setTimeout(r, 2000));
         await client.getSnapshot(tabId);
         await new Promise(r => setTimeout(r, 2000));
@@ -130,7 +130,7 @@ describe('Tab Lifecycle Contract', () => {
         // Wait briefly for popup event to register
         await new Promise(r => setTimeout(r, 1500));
 
-        // List tabs — should see more than 1 tab (the popup is now managed)
+        // List tabs, should see more than 1 tab (the popup is now managed)
         const res = await client.request('GET', `/tabs?userId=${client.userId}`);
         expect(res.tabs.length).toBeGreaterThanOrEqual(2);
 
@@ -164,7 +164,7 @@ describe('Tab Lifecycle Contract', () => {
         // Wait briefly for popup event to register
         await new Promise(r => setTimeout(r, 1500));
 
-        // List tabs — popup should be tracked
+        // List tabs, popup should be tracked
         const res = await client.request('GET', `/tabs?userId=${client.userId}`);
         const popupTab = res.tabs.find(t => t.url.includes('/popup-target'));
         expect(popupTab).toBeDefined();

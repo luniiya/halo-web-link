@@ -5,7 +5,7 @@ export function lifetimeLabel(lifetime?: Lifetime, now = Date.now()): string {
   if (lifetime.protected) return "Protected while viewing or waiting for a reply";
   if (lifetime.expiresAt === null) return "Automatic idle cleanup disabled";
   const seconds = Math.max(0, Math.ceil((lifetime.expiresAt - now) / 1000));
-  return seconds <= 60 ? `Closes in ${seconds}s — choose Keep open to prevent this` : `Idle cleanup in ${Math.ceil(seconds / 60)} min`;
+  return seconds <= 60 ? `Closes in ${seconds}s, choose Keep open to prevent this` : `Idle cleanup in ${Math.ceil(seconds / 60)} min`;
 }
 export function closureLabel(reason = "unknown"): string {
   const reasons: Record<string, string> = {

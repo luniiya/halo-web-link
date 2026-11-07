@@ -13,7 +13,7 @@ describe('anonymize', () => {
   // ---- File paths ----
 
   test('strips Unix home directory paths', () => {
-    const input = 'Error at /Users/pradeep/personal/bloom-web-link/server.js:123:45';
+    const input = 'Error at /Users/pradeep/personal/halo-web-link/server.js:123:45';
     const result = anonymize(input);
     expect(!result.includes('pradeep')).toBeTruthy();
     expect(!result.includes('/Users/')).toBeTruthy();
@@ -28,7 +28,7 @@ describe('anonymize', () => {
   });
 
   test('strips Windows paths', () => {
-    const input = 'at C:\\Users\\Administrator\\Desktop\\bwl\\server.js:99:10';
+    const input = 'at C:\\Users\\Administrator\\Desktop\\hwl\\server.js:99:10';
     const result = anonymize(input);
     expect(!result.includes('Administrator')).toBeTruthy();
     expect(result.includes('server.js')).toBeTruthy();
@@ -224,8 +224,8 @@ describe('anonymize', () => {
 
   test('handles a realistic stack trace with multiple leak vectors', () => {
     const stack = `Error: Navigation timeout of 30000ms exceeded
-    at navigate (/Users/pradeep/personal/bloom-web-link/server.js:1500:15)
-    at processRequest (/Users/pradeep/personal/bloom-web-link/server.js:800:10)
+    at navigate (/Users/pradeep/personal/halo-web-link/server.js:1500:15)
+    at processRequest (/Users/pradeep/personal/halo-web-link/server.js:800:10)
     url: https://super-secret-dashboard.internal.corp.com/page?auth=ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     proxy: http://user:pass@192.168.1.50:8080
     machine: e784079b295268
@@ -967,7 +967,7 @@ describe('native memory leak detection', () => {
   beforeEach(() => {
     warnCalls = [];
     console.warn = (line) => {
-      const match = /^\[bwl\] ([^:]+(?::[^:\s]+)?):/.exec(String(line));
+      const match = /^\[hwl\] ([^:]+(?::[^:\s]+)?):/.exec(String(line));
       warnCalls.push({ body: { type: match ? match[1] : 'other' } });
     };
     mockUptimeSeconds = 200; // default: past min uptime

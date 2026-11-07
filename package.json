@@ -1,25 +1,25 @@
 {
-  "name": "@luniiya/bloom-web-link",
+  "name": "@luniiya/halo-web-link",
   "version": "2.0.0",
   "description": "Headless anti-detection browser for AI agents over MCP - element refs, session isolation, and a live dashboard",
   "type": "module",
   "main": "server.js",
   "license": "MIT",
   "author": "Luniiya",
-  "homepage": "https://github.com/luniiya/bloom-web-link#readme",
+  "homepage": "https://github.com/luniiya/halo-web-link#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/luniiya/bloom-web-link.git"
+    "url": "git+https://github.com/luniiya/halo-web-link.git"
   },
   "bugs": {
-    "url": "https://github.com/luniiya/bloom-web-link/issues"
+    "url": "https://github.com/luniiya/halo-web-link/issues"
   },
   "keywords": [
     "browser",
     "automation",
     "headless",
     "scraping",
-    "bwl",
+    "hwl",
     "camoufox",
     "anti-detection",
     "ai-agent",
@@ -43,7 +43,7 @@
     "src/",
     "lib/",
     "plugins/",
-    "bwl.config.json",
+    "hwl.config.json",
     "plugin.ts",
     "plugin.js",
     "dist/plugin.js",
@@ -78,107 +78,107 @@
     },
     "tools": [
       {
-        "name": "bwl_create_tab",
+        "name": "hwl_create_tab",
         "description": "Open a new browser tab at a URL"
       },
       {
-        "name": "bwl_snapshot",
+        "name": "hwl_snapshot",
         "description": "Get accessibility snapshot with element refs"
       },
       {
-        "name": "bwl_read_text",
+        "name": "hwl_read_text",
         "description": "Cheap text-only page read (no tree, no refs, no screenshot)"
       },
       {
-        "name": "bwl_click",
+        "name": "hwl_click",
         "description": "Click by ref, CSS selector, or viewport coordinates"
       },
       {
-        "name": "bwl_wait",
+        "name": "hwl_wait",
         "description": "Wait for page readiness, a selector, text, or URL"
       },
       {
-        "name": "bwl_wait_for_reply",
+        "name": "hwl_wait_for_reply",
         "description": "Wait for new chat messages and typing status without repeated snapshots"
       },
       {
-        "name": "bwl_keep_open",
+        "name": "hwl_keep_open",
         "description": "Protect a tab from automatic cleanup"
       },
       {
-        "name": "bwl_tab_history",
+        "name": "hwl_tab_history",
         "description": "Read closed-tab recovery information and saved text"
       },
       {
-        "name": "bwl_mouse",
+        "name": "hwl_mouse",
         "description": "Move, hover, or drag the native browser mouse"
       },
       {
-        "name": "bwl_type",
+        "name": "hwl_type",
         "description": "Type text into an element"
       },
       {
-        "name": "bwl_select",
+        "name": "hwl_select",
         "description": "Select an option in a native <select> dropdown"
       },
       {
-        "name": "bwl_navigate",
+        "name": "hwl_navigate",
         "description": "Navigate to URL or search macro"
       },
       {
-        "name": "bwl_scroll",
+        "name": "hwl_scroll",
         "description": "Scroll page up/down/left/right"
       },
       {
-        "name": "bwl_screenshot",
+        "name": "hwl_screenshot",
         "description": "Capture page screenshot"
       },
       {
-        "name": "bwl_close_tab",
+        "name": "hwl_close_tab",
         "description": "Close a browser tab"
       },
       {
-        "name": "bwl_evaluate",
+        "name": "hwl_evaluate",
         "description": "Execute JavaScript in a Camoufox tab page context"
       },
       {
-        "name": "bwl_list_tabs",
+        "name": "hwl_list_tabs",
         "description": "List open tabs for a user"
       },
       {
-        "name": "bwl_create_profile",
+        "name": "hwl_create_profile",
         "description": "Create a browser profile with its own fingerprint, cookies and history"
       },
       {
-        "name": "bwl_list_profiles",
+        "name": "hwl_list_profiles",
         "description": "List browser profiles"
       },
       {
-        "name": "bwl_delete_profile",
+        "name": "hwl_delete_profile",
         "description": "Delete a browser profile and its data"
       },
       {
-        "name": "bwl_import_cookies",
-        "description": "Import Netscape cookie file (requires BWL_API_KEY)"
+        "name": "hwl_import_cookies",
+        "description": "Import Netscape cookie file (requires HWL_API_KEY)"
       },
       {
-        "name": "bwl_element_state",
+        "name": "hwl_element_state",
         "description": "Computed style + ARIA state for selectors, without a screenshot"
       },
       {
-        "name": "bwl_upload",
+        "name": "hwl_upload",
         "description": "Attach a file (url, base64, or path) to an upload field or drop zone"
       },
       {
-        "name": "bwl_batch",
+        "name": "hwl_batch",
         "description": "Run several click/type/wait/scroll/navigate/read_text actions in one call"
       },
       {
-        "name": "bwl_save_page",
+        "name": "hwl_save_page",
         "description": "Save the current page or document, like Ctrl+S"
       },
       {
-        "name": "bwl_downloads",
+        "name": "hwl_downloads",
         "description": "List a tab's downloaded files or fetch one"
       }
     ]
@@ -247,7 +247,7 @@
     "hono": "4.13.5"
   },
   "bin": {
-    "bloom-web-link": "./bin/bloom-web-link.js",
-    "bloom-web-link-mcp": "./mcp/server.mjs"
+    "halo-web-link": "./bin/halo-web-link.js",
+    "halo-web-link-mcp": "./mcp/server.mjs"
   }
 }

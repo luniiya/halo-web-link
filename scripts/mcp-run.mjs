@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Run a sequence of tool calls inside a single MCP process — simulates real
+// Run a sequence of tool calls inside a single MCP process, simulates real
 // Claude Code usage (long-lived process, fixed userId). Takes a JSON sequence
 // as a CLI argument.
 //
-// Usage: node scripts/mcp-run.mjs '[["bwl_create_tab",{"url":"..."}],["bwl_snapshot",{}]]'
+// Usage: node scripts/mcp-run.mjs '[["hwl_create_tab",{"url":"..."}],["hwl_snapshot",{}]]'
 // A snapshot's tabId is auto-substituted from the prior create_tab result ("${tabId}").
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
@@ -18,7 +18,7 @@ const proc = spawn(process.execPath, [SERVER], {
   env: {
     PATH: process.env.PATH, HOME: process.env.HOME, USER: process.env.USER,
     NODE_OPTIONS: process.env.NODE_OPTIONS || "",
-    BWL_BASE_URL: process.env.BWL_BASE_URL || "http://localhost:9377",
+    HWL_BASE_URL: process.env.HWL_BASE_URL || "http://localhost:9377",
   },
   stdio: ["pipe", "pipe", "pipe"],
 });

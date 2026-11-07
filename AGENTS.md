@@ -1,4 +1,4 @@
-# bloom-web-link Agent Guide
+# halo-web-link Agent Guide
 
 Headless browser automation server for AI agents. Runs in Docker only.
 
@@ -143,8 +143,8 @@ npx jest plugins/youtube          # Single plugin's tests
 ## Docker
 
 ```bash
-docker build -t bloom-web-link .
-docker run -p 9377:9377 bloom-web-link
+docker build -t halo-web-link .
+docker run -p 9377:9377 halo-web-link
 ```
 
 ## Key Files
@@ -161,8 +161,8 @@ docker run -p 9377:9377 bloom-web-link
 - `lib/macros.js` - Search macro URL expansion
 - `lib/plugins.js` - Plugin loader and event bus
 - `lib/auth.js` - Shared auth middleware (API key / loopback)
-- `bwl.config.json` - Plugin configuration (which plugins to load)
-- `plugins/` - Plugin directory (loaded per bwl.config.json)
+- `hwl.config.json` - Plugin configuration (which plugins to load)
+- `plugins/` - Plugin directory (loaded per hwl.config.json)
 - `plugins/youtube/` - Default plugin: YouTube transcript extraction
 - `scripts/install-plugin-deps.sh` - Installs plugin deps (apt.txt + post-install.sh)
 - `plugins/persistence/index.js` - Session persistence lifecycle hooks
@@ -252,7 +252,7 @@ When adding features that need env vars or subprocesses, put that code in a `lib
 
 ## Plugin System
 
-Plugins extend bloom-web-link with new endpoints, background processes, and lifecycle hooks. The server auto-loads all plugins from `plugins/<name>/index.js` on startup.
+Plugins extend halo-web-link with new endpoints, background processes, and lifecycle hooks. The server auto-loads all plugins from `plugins/<name>/index.js` on startup.
 
 ### Creating a Plugin
 
@@ -424,14 +424,14 @@ chmod +x /usr/local/bin/yt-dlp
 
 Both are run by `scripts/install-plugin-deps.sh` during Docker build.
 
-### Configuration (`bwl.config.json`)
+### Configuration (`hwl.config.json`)
 
-`bwl.config.json` controls which plugins are loaded at runtime and during Docker build:
+`hwl.config.json` controls which plugins are loaded at runtime and during Docker build:
 
 ```json
 {
-  "id": "bloom-web-link",
-  "name": "Bloom Web Link",
+  "id": "halo-web-link",
+  "name": "Halo Web Link",
   "version": "1.5.2",
   "plugins": ["youtube"]
 }
@@ -439,7 +439,7 @@ Both are run by `scripts/install-plugin-deps.sh` during Docker build.
 
 - **`plugins`** -- array of plugin directory names to load. Only these are loaded at startup and have deps installed during build.
 - If the file is missing or has no `plugins` key, **all** plugins in `plugins/` are loaded (backward-compatible).
-- This is bwl's own config. `openclaw.plugin.json` is separate -- it tells the OpenClaw Gateway how to configure bwl as an external service.
+- This is hwl's own config. `openclaw.plugin.json` is separate -- it tells the OpenClaw Gateway how to configure hwl as an external service.
 
 ### Installing Plugins
 
@@ -447,7 +447,7 @@ Use the plugin manager to install third-party plugins from git or local paths:
 
 ```bash
 # Install from git
-npm run plugin install https://github.com/user/bwl-screenshot-plugin
+npm run plugin install https://github.com/user/hwl-screenshot-plugin
 npm run plugin install git:github.com/user/my-plugin
 
 # Install from local directory
@@ -460,7 +460,7 @@ npm run plugin list
 npm run plugin remove my-plugin
 ```
 
-The installer copies the plugin into `plugins/`, adds it to `bwl.config.json`, and runs `npm install` for any npm dependencies. System deps (`apt.txt`, `post-install.sh`) are flagged but must be installed manually or via Docker rebuild.
+The installer copies the plugin into `plugins/`, adds it to `hwl.config.json`, and runs `npm install` for any npm dependencies. System deps (`apt.txt`, `post-install.sh`) are flagged but must be installed manually or via Docker rebuild.
 
 Plugin sources can be:
 - **Git repos** where the root has `index.js` with `register()` (installed as one plugin)
@@ -472,14 +472,14 @@ Plugin sources can be:
 Two plugins ship by default:
 
 - **youtube** -- YouTube transcript extraction (enabled by default)
-- **persistence** -- Per-user session state persistence to `~/.bwl/profiles/` (enabled by default)
+- **persistence** -- Per-user session state persistence to `~/.hwl/profiles/` (enabled by default)
 
-The `youtube` plugin ships as a default plugin -- it's listed in `bwl.config.json` and included in the base Docker image with its deps pre-installed. The base image runs `scripts/install-plugin-deps.sh` which reads the config and installs `apt.txt` packages + `post-install.sh` hooks for listed plugins.
+The `youtube` plugin ships as a default plugin -- it's listed in `hwl.config.json` and included in the base Docker image with its deps pre-installed. The base image runs `scripts/install-plugin-deps.sh` which reads the config and installs `apt.txt` packages + `post-install.sh` hooks for listed plugins.
 
 The `with-plugins` Dockerfile stage is for rebuilding after adding third-party plugins:
 
 ```bash
-docker build --target with-plugins -t bloom-web-link .
+docker build --target with-plugins -t halo-web-link .
 ```
 
 The `with-plugins` stage re-runs `install-plugin-deps.sh` to pick up any new plugins added to `plugins/`.
@@ -497,7 +497,7 @@ Plugins create Prometheus metrics via `ctx.createMetric()`. Returns a no-op stub
 ```js
 // In register(app, ctx):
 const transcriptsTotal = await ctx.createMetric('counter', {
-  name: 'bwl_youtube_transcripts_total',
+  name: 'hwl_youtube_transcripts_total',
   help: 'YouTube transcripts extracted',
   labelNames: ['method'],
 });
@@ -564,4 +564,4 @@ Key patterns:
 
 ## Testing / Benchmarks
 
-- https://www.automationexercise.com/test_cases -- real e-commerce site with ~26 numbered test cases (signup/login, cart, checkout, search, subscription, contact form, product review, scroll behavior, etc). Good source of realistic tasks for comparing bwl MCP tools against other browser-automation tool sets (e.g. claude-in-chrome) or validating new bwl tools end-to-end.
+- https://www.automationexercise.com/test_cases -- real e-commerce site with ~26 numbered test cases (signup/login, cart, checkout, search, subscription, contact form, product review, scroll behavior, etc). Good source of realistic tasks for comparing hwl MCP tools against other browser-automation tool sets (e.g. claude-in-chrome) or validating new hwl tools end-to-end.

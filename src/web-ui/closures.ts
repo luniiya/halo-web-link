@@ -2,7 +2,7 @@ import type { ClosedEntry, State, TabRef } from "./types.ts";
 
 // Client-side memory of tabs that used to be open. A tab that drops out of
 // /api/state moves here (keeping its last title/url/thumbnail) instead of
-// just vanishing, so "Closed" has something to show. Session-local only —
+// just vanishing, so "Closed" has something to show. Session-local only:
 // resets on page reload.
 export const MAX_CLOSED = 40;
 

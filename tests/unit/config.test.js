@@ -12,25 +12,25 @@ afterEach(() => {
 
 describe('loadConfig', () => {
   test('reads the optional API bind host and forwards it to server subprocesses', () => {
-    process.env.BWL_BIND_HOST = '127.0.0.1';
+    process.env.HWL_BIND_HOST = '127.0.0.1';
 
     const config = loadConfig();
 
     expect(config.bindHost).toBe('127.0.0.1');
-    expect(config.serverEnv.BWL_BIND_HOST).toBe('127.0.0.1');
+    expect(config.serverEnv.HWL_BIND_HOST).toBe('127.0.0.1');
   });
 
   test('prefers CAMOUFOX_EXECUTABLE for external Camoufox executable', () => {
     process.env.CAMOUFOX_EXECUTABLE = '/nix/store/camoufox/bin/camoufox';
     process.env.CAMOUFOX_EXECUTABLE_PATH = '/ignored/camoufox';
-    process.env.BWL_EXECUTABLE_PATH = '/also-ignored/camoufox';
+    process.env.HWL_EXECUTABLE_PATH = '/also-ignored/camoufox';
 
     const config = loadConfig();
 
     expect(config.camoufoxExecutablePath).toBe('/nix/store/camoufox/bin/camoufox');
     expect(config.serverEnv.CAMOUFOX_EXECUTABLE).toBe('/nix/store/camoufox/bin/camoufox');
     expect(config.serverEnv.CAMOUFOX_EXECUTABLE_PATH).toBe('/ignored/camoufox');
-    expect(config.serverEnv.BWL_EXECUTABLE_PATH).toBe('/also-ignored/camoufox');
+    expect(config.serverEnv.HWL_EXECUTABLE_PATH).toBe('/also-ignored/camoufox');
   });
 
   test('accepts compatibility executable env vars', () => {
@@ -38,7 +38,7 @@ describe('loadConfig', () => {
     expect(loadConfig().camoufoxExecutablePath).toBe('/compat/camoufox');
 
     delete process.env.CAMOUFOX_EXECUTABLE_PATH;
-    process.env.BWL_EXECUTABLE_PATH = '/legacy/camoufox';
+    process.env.HWL_EXECUTABLE_PATH = '/legacy/camoufox';
     expect(loadConfig().camoufoxExecutablePath).toBe('/legacy/camoufox');
   });
 
@@ -51,45 +51,45 @@ describe('loadConfig', () => {
   });
 
   test('configures an optional direct browser identity and forwards it to subprocesses', () => {
-    process.env.BWL_LOCALE = 'en-AU';
-    process.env.BWL_TIMEZONE = 'Australia/Sydney';
+    process.env.HWL_LOCALE = 'en-AU';
+    process.env.HWL_TIMEZONE = 'Australia/Sydney';
 
     const config = loadConfig();
 
     expect(config.directIdentity).toEqual({ locale: 'en-AU', timezoneId: 'Australia/Sydney' });
-    expect(config.serverEnv.BWL_LOCALE).toBe('en-AU');
-    expect(config.serverEnv.BWL_TIMEZONE).toBe('Australia/Sydney');
+    expect(config.serverEnv.HWL_LOCALE).toBe('en-AU');
+    expect(config.serverEnv.HWL_TIMEZONE).toBe('Australia/Sydney');
   });
 
   test('does not set a direct browser identity unless both values are configured', () => {
-    delete process.env.BWL_LOCALE;
-    delete process.env.BWL_TIMEZONE;
+    delete process.env.HWL_LOCALE;
+    delete process.env.HWL_TIMEZONE;
     expect(loadConfig().directIdentity).toBeNull();
 
-    process.env.BWL_LOCALE = 'en-AU';
-    expect(() => loadConfig()).toThrow('BWL_LOCALE and BWL_TIMEZONE must be set together');
+    process.env.HWL_LOCALE = 'en-AU';
+    expect(() => loadConfig()).toThrow('HWL_LOCALE and HWL_TIMEZONE must be set together');
 
-    process.env.BWL_TIMEZONE = 'Not/A_Timezone';
-    expect(() => loadConfig()).toThrow('BWL_TIMEZONE must be a valid IANA timezone');
+    process.env.HWL_TIMEZONE = 'Not/A_Timezone';
+    expect(() => loadConfig()).toThrow('HWL_TIMEZONE must be a valid IANA timezone');
   });
 
   test('configures and forwards the upload directory', () => {
-    process.env.BWL_UPLOADS_DIR = '/mounted/uploads';
+    process.env.HWL_UPLOADS_DIR = '/mounted/uploads';
 
     const config = loadConfig();
 
     expect(config.uploadsDir).toBe('/mounted/uploads');
-    expect(config.serverEnv.BWL_UPLOADS_DIR).toBe('/mounted/uploads');
+    expect(config.serverEnv.HWL_UPLOADS_DIR).toBe('/mounted/uploads');
   });
 
   test('configures and forwards the evaluate body size limit', () => {
-    delete process.env.BWL_EVALUATE_MAX_BODY_SIZE;
+    delete process.env.HWL_EVALUATE_MAX_BODY_SIZE;
     expect(loadConfig().evaluateMaxBodySize).toBe('1mb');
 
-    process.env.BWL_EVALUATE_MAX_BODY_SIZE = '10mb';
+    process.env.HWL_EVALUATE_MAX_BODY_SIZE = '10mb';
     const config = loadConfig();
     expect(config.evaluateMaxBodySize).toBe('10mb');
-    expect(config.serverEnv.BWL_EVALUATE_MAX_BODY_SIZE).toBe('10mb');
+    expect(config.serverEnv.HWL_EVALUATE_MAX_BODY_SIZE).toBe('10mb');
   });
 
   test('preserves zero timeout values to disable session expiry and idle shutdown', () => {
@@ -133,9 +133,9 @@ describe('loadConfig', () => {
     expect(config.serverEnv.NAVIGATE_TIMEOUT_MS).toBe('60000');
   });
 
-  test('reads newPageTimeoutMs from bwl.config.json with a 10s fallback', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bwl-config-'));
-    const configPath = path.join(dir, 'bwl.config.json');
+  test('reads newPageTimeoutMs from hwl.config.json with a 10s fallback', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hwl-config-'));
+    const configPath = path.join(dir, 'hwl.config.json');
 
     fs.writeFileSync(configPath, JSON.stringify({ newPageTimeoutMs: 15000 }));
     expect(loadConfig({ configPath }).newPageTimeoutMs).toBe(15000);
@@ -147,17 +147,17 @@ describe('loadConfig', () => {
   });
 
   test('enables desktop interactive mode from the environment and forwards it to server subprocesses', () => {
-    process.env.BWL_INTERACTIVE = 'desktop';
+    process.env.HWL_INTERACTIVE = 'desktop';
 
     const config = loadConfig();
 
     expect(config.interactiveMode).toBe('desktop');
-    expect(config.serverEnv.BWL_INTERACTIVE).toBe('desktop');
+    expect(config.serverEnv.HWL_INTERACTIVE).toBe('desktop');
   });
 
-  test('reads interactive mode from bwl.config.json and rejects invalid modes', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bwl-config-'));
-    const configPath = path.join(dir, 'bwl.config.json');
+  test('reads interactive mode from hwl.config.json and rejects invalid modes', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hwl-config-'));
+    const configPath = path.join(dir, 'hwl.config.json');
 
     fs.writeFileSync(configPath, JSON.stringify({ interactive: { mode: 'desktop' } }));
     expect(loadConfig({ configPath }).interactiveMode).toBe('desktop');
@@ -165,36 +165,36 @@ describe('loadConfig', () => {
     fs.writeFileSync(configPath, JSON.stringify({ interactive: { mode: 'surprise' } }));
     expect(loadConfig({ configPath }).interactiveMode).toBe('off');
 
-    // noVNC was removed: bwl is agent-only, there is no human viewing mode.
+    // noVNC was removed: hwl is agent-only, there is no human viewing mode.
     fs.writeFileSync(configPath, JSON.stringify({ interactive: { mode: 'novnc' } }));
     expect(loadConfig({ configPath }).interactiveMode).toBe('off');
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  test('disables default addons when BWL_DISABLE_DEFAULT_ADDONS is set', () => {
-    delete process.env.BWL_DISABLE_DEFAULT_ADDONS;
+  test('disables default addons when HWL_DISABLE_DEFAULT_ADDONS is set', () => {
+    delete process.env.HWL_DISABLE_DEFAULT_ADDONS;
     expect(loadConfig().disableDefaultAddons).toBe(false);
 
-    process.env.BWL_DISABLE_DEFAULT_ADDONS = '0';
+    process.env.HWL_DISABLE_DEFAULT_ADDONS = '0';
     expect(loadConfig().disableDefaultAddons).toBe(false);
 
-    process.env.BWL_DISABLE_DEFAULT_ADDONS = '1';
+    process.env.HWL_DISABLE_DEFAULT_ADDONS = '1';
     expect(loadConfig().disableDefaultAddons).toBe(true);
 
-    process.env.BWL_DISABLE_DEFAULT_ADDONS = 'true';
+    process.env.HWL_DISABLE_DEFAULT_ADDONS = 'true';
     const config = loadConfig();
     expect(config.disableDefaultAddons).toBe(true);
-    expect(config.serverEnv.BWL_DISABLE_DEFAULT_ADDONS).toBe('true');
+    expect(config.serverEnv.HWL_DISABLE_DEFAULT_ADDONS).toBe('true');
   });
 
   test('enables reject-only cookie banner handling by default and allows opt-out', () => {
-    delete process.env.BWL_COOKIE_BANNER_HANDLING;
+    delete process.env.HWL_COOKIE_BANNER_HANDLING;
     expect(loadConfig().cookieBannerHandlingEnabled).toBe(true);
 
-    process.env.BWL_COOKIE_BANNER_HANDLING = 'false';
+    process.env.HWL_COOKIE_BANNER_HANDLING = 'false';
     const config = loadConfig();
     expect(config.cookieBannerHandlingEnabled).toBe(false);
-    expect(config.serverEnv.BWL_COOKIE_BANNER_HANDLING).toBe('false');
+    expect(config.serverEnv.HWL_COOKIE_BANNER_HANDLING).toBe('false');
   });
 
 });
@@ -214,11 +214,11 @@ describe('tab idle timeout configuration', () => {
 
 describe('tab limit behaviour', () => {
   test('refuses new tabs at the limit unless recycling is opted into', () => {
-    delete process.env.BWL_RECYCLE_TABS;
+    delete process.env.HWL_RECYCLE_TABS;
     delete process.env.MAX_TABS_PER_SESSION;
     expect(loadConfig()).toMatchObject({ recycleTabs: false, maxTabsPerSession: 25 });
-    process.env.BWL_RECYCLE_TABS = 'true';
+    process.env.HWL_RECYCLE_TABS = 'true';
     expect(loadConfig().recycleTabs).toBe(true);
-    delete process.env.BWL_RECYCLE_TABS;
+    delete process.env.HWL_RECYCLE_TABS;
   });
 });

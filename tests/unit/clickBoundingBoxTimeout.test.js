@@ -79,7 +79,7 @@ describe('/click mouse-sequence boundingBox bounding', () => {
         'Element not actionable: no bounding box within 3000ms (element likely detached after page change). Call snapshot to refresh refs and retry.'
       );
       // If this were classified as a timeout, handleRouteError would destroy
-      // the entire user session ('navigation timeout — destroying session for
+      // the entire user session ('navigation timeout, destroying session for
       // fresh proxy') over a stale ref. It must not be.
       expect(isTimeoutError(err)).toBe(false);
     });

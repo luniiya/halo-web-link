@@ -1,6 +1,6 @@
 import { authHeaders } from "./api.ts";
 
-// Grid thumbnails are cached stills, refreshed at most this often — the
+// Grid thumbnails are cached stills, refreshed at most this often, the
 // "live feed" (fast, on every poll + after each click) only exists in the
 // single-tab detail view, opened deliberately.
 export const THUMB_REFRESH_MS = 10_000;

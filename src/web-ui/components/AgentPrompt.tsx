@@ -23,7 +23,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 // Header control: copies a ready-to-paste prompt that tells an agent how to
-// connect to bwl and which profile is its own. Any agent may still use other
+// connect to hwl and which profile is its own. Any agent may still use other
 // profiles when it has a reason.
 export function AgentPrompt({ profiles, mcpUrl, authRequired }: Props) {
   const names = profiles.length ? profiles : ["main"];

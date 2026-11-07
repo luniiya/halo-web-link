@@ -209,7 +209,7 @@ app.use((req, res, next) => {
     }
     // Surface server-side timing back to the caller so agents can tell
     // "the tool was slow" apart from "the network hop was slow" instead of guessing.
-    if (!res.headersSent) res.setHeader('X-Bwl-Server-Ms', String(ms));
+    if (!res.headersSent) res.setHeader('X-Hwl-Server-Ms', String(ms));
 
     return origEnd(...args);
   };
@@ -224,9 +224,9 @@ const FLY_MACHINE_ID = fly.machineId;
 // Route tab requests to the owning machine via fly-replay header.
 app.use('/tabs/:tabId', fly.replayMiddleware(log));
 
-// Access-key middleware: gates every route when BWL_ACCESS_KEY is set.
+// Access-key middleware: gates every route when HWL_ACCESS_KEY is set.
 // Exempts /health (Docker healthcheck) and routes that have their own
-// dedicated keys (cookie import -> BWL_API_KEY, /stop -> BWL_ADMIN_KEY)
+// dedicated keys (cookie import -> HWL_API_KEY, /stop -> HWL_ADMIN_KEY)
 // so each key gates a distinct surface. When unset, behavior is unchanged.
 app.use(accessKeyMiddleware(CONFIG));
 
@@ -389,7 +389,7 @@ function sendError(res, err, extraFields = {}) {
   };
   if (code) body.code = code;
   if (recovery) body.recovery = recovery;
-  if (code === 'ambiguous_selector') body.hint = 'Pass nth (0-based) to bwl_click to click the exact match instead of retrying the same selector.';
+  if (code === 'ambiguous_selector') body.hint = 'Pass nth (0-based) to hwl_click to click the exact match instead of retrying the same selector.';
   if (err instanceof StaleRefsError) body.ref = err.ref;
   res.status(status).json(body);
 }
@@ -503,7 +503,7 @@ app.post('/sessions/:userId/cookies', express.json({ limit: '512kb' }), async (r
       if (!allowUnauthedLocal) {
         return res.status(403).json({
           error:
-            'Cookie import is disabled without BWL_API_KEY except for loopback requests in non-production environments.',
+            'Cookie import is disabled without HWL_API_KEY except for loopback requests in non-production environments.',
         });
       }
     }
@@ -744,7 +744,7 @@ function getHostOS() {
   const platform = os.platform();
   if (platform === 'darwin') return 'macos';
   if (platform === 'linux') return 'linux';
-  throw new Error(`Unsupported platform: ${platform}. bloom-web-link supports Linux and macOS.`);
+  throw new Error(`Unsupported platform: ${platform}. halo-web-link supports Linux and macOS.`);
 }
 
 // Proxy strategy for outbound browsing.
@@ -910,7 +910,7 @@ async function restartBrowser(reason) {
     userNavHealth.clear();
     await closeBrowserFully(`browser_restart:${reason}`);
     pluginEvents.emit('browser:closed', { reason });
-    // Do NOT clear browserLaunchPromise here — ensureBrowser() owns the
+    // Do NOT clear browserLaunchPromise here, ensureBrowser() owns the
     // single-flight primitive. Clearing it manually opens a window where a
     // concurrent request can start a second launch. See #8554.
     await ensureBrowser();
@@ -931,7 +931,7 @@ function getTotalTabCount() {
       // on MAX_TABS_GLOBAL, surfacing leaks before Firefox starves.
       total += session.context.pages().length;
     } catch (_) {
-      // Context is dead — fall back to bookkeeping count for this session.
+      // Context is dead, fall back to bookkeeping count for this session.
       for (const group of session.tabGroups.values()) total += group.size;
     }
   }
@@ -1044,7 +1044,7 @@ async function closeBrowserFully(reason) {
 }
 
 // Xvfb displays of profile browsers still launching: profileRuntimes only
-// learns them once the launch returns, and Xvfb carries no BWL_PROFILE_ID.
+// learns them once the launch returns, and Xvfb carries no HWL_PROFILE_ID.
 const launchingProfileDisplayPids = new Set();
 
 // Owned camoufox/Xvfb processes that belong to the default browser, not a profile.
@@ -1191,7 +1191,7 @@ const virtualDisplayRegistry = createVirtualDisplayRegistry(() => new DefaultVir
 
 async function buildLaunchOptionsWithGeoipFallback(baseOptions, attemptMeta) {
   // camoufox-js's launchOptions() mutates the `addons` array in place
-  // (appending its default addons), so each attempt needs its own copy —
+  // (appending its default addons), so each attempt needs its own copy,
   // otherwise a geoip-fallback retry would double-append onto the array
   // from the first (failed) attempt.
   try {
@@ -1265,6 +1265,9 @@ async function buildCamoufoxOptionsNow({ hostOS, launchProxy, vdDisplay, useDesk
     exclude_addons: CONFIG.disableDefaultAddons ? ['UBO'] : undefined,
     firefox_user_prefs: {
       ...(CONFIG.cookieBannerHandlingEnabled ? COOKIE_BANNER_FIREFOX_PREFS : {}),
+      // Popups become managed tabs (attachPopupHandler), so Firefox's blocker
+      // only hides them: it drops target=_blank links clicked from a script.
+      'dom.disable_open_during_load': false,
       // Speech synthesis is off in a container; profiles list their OS's voices.
       ...(profile ? { 'media.webspeech.synth.enabled': true } : {}),
     },
@@ -1372,7 +1375,7 @@ async function launchBrowserInstance() {
       browserLaunchProxy = launchProxy;
       _lastBrowserPid = candidateBrowser.process?.()?.pid ?? null;
       browser = candidateBrowser; // publish AFTER PID is captured
-      _lastBrowserStopReason = null; // clear — browser is healthy
+      _lastBrowserStopReason = null; // clear, browser is healthy
       _lastBrowserRestartAt = Date.now();
       attachBrowserCleanup(browser, localVirtualDisplay);
       pluginEvents.emit('browser:launched', { browser, display: vdDisplay });
@@ -1597,7 +1600,7 @@ async function closeSession(userId, session, {
     for (const [id, tab] of group) rememberClosed(key, id, tab, reason, sessionKey);
   }
 
-  // Drain locks BEFORE closing context — queued operations get clean "Tab destroyed"
+  // Drain locks BEFORE closing context, queued operations get clean "Tab destroyed"
   // (410) instead of messy "Target page closed" (500) errors.
   if (clearLocks) {
     clearSessionLocks(session);
@@ -1661,7 +1664,7 @@ async function getSession(userId, { trace = false } = {}) {
           { statusCode: 503, code: 'admission_rejected' }
         );
       }
-      // Memory admission control (Fly.io only) — reject new sessions when
+      // Memory admission control (Fly.io only), reject new sessions when
       // system memory is critically low. 503 tells Fly Proxy to try another machine.
       if (FLY_MACHINE_ID) {
         const freeMem = os.freemem();
@@ -1673,7 +1676,7 @@ async function getSession(userId, { trace = false } = {}) {
             sessions: sessions.size,
           });
           throw Object.assign(
-            new Error('Server memory pressure — try again shortly'),
+            new Error('Server memory pressure, try again shortly'),
             { statusCode: 503, code: 'admission_rejected' }
           );
         }
@@ -1691,7 +1694,7 @@ async function getSession(userId, { trace = false } = {}) {
           hasProxy: !!proxyPool,
           directIdentity: CONFIG.directIdentity,
         }),
-        // A profile's own locale/timezone beat the proxy's geoip and BWL_LOCALE.
+        // A profile's own locale/timezone beat the proxy's geoip and HWL_LOCALE.
         ...(profile?.locale ? { locale: profile.locale } : {}),
         ...(profile?.timezone ? { timezoneId: profile.timezone } : {}),
       };
@@ -1865,14 +1868,14 @@ function handleRouteError(err, req, res, extraFields = {}) {
   const isNavigationTimeout =
     isTimeoutError(err) && err.code !== 'tab_timeout' && userId && NAVIGATION_TIMEOUT_ACTIONS.has(action);
   if (isNavigationTimeout && shouldRecoverSession(proxyPool?.canRotateSessions, sessions.get(normalizeUserId(userId)) || { tabGroups: new Map() }, Date.now(), tabLocks)) {
-    log('warn', 'navigation timeout — destroying session for fresh proxy', {
+    log('warn', 'navigation timeout, destroying session for fresh proxy', {
       action, userId, error: err.message,
     });
     browserRestartsTotal.labels('navigation_timeout').inc();
     recordNavFailure(userId);
     destroySession(userId).catch(() => {});
   } else if (isNavigationTimeout) {
-    log('warn', 'navigation timeout — no proxy to rotate, leaving the session up', {
+    log('warn', 'navigation timeout, no proxy to rotate, leaving the session up', {
       action, userId, error: err.message,
     });
     recordNavFailure(userId);
@@ -1906,7 +1909,7 @@ function handleRouteError(err, req, res, extraFields = {}) {
     return res.status(410).json({ error: 'Tab was destroyed. Open a new tab.', code: 'tab_destroyed', retryable: true, recovery: 'create_new_tab', ...extraFields });
   }
   // Dead context = session torn down (by proxy error, timeout, or reaper) while this op
-  // was in flight. The ROOT CAUSE was already reported — this is a cascade error.
+  // was in flight. The ROOT CAUSE was already reported, this is a cascade error.
   // Return 503 (retriable) so the client retries with a fresh session.
   if (isDeadContextError(err)) {
     return res.status(503).json({ error: 'Browser session expired. Retry to get a fresh session.', code: 'session_expired', retryable: true, recovery: 'retry', ...extraFields });
@@ -2061,7 +2064,7 @@ function findTab(session, tabId) {
 }
 
 // Return 404 or 410 depending on whether the browser restarted recently.
-// 410 Gone tells clients the tab existed but the browser crashed — create a new one.
+// 410 Gone tells clients the tab existed but the browser crashed, create a new one.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function tabNotFoundResponse(res, tabId) {
@@ -2071,7 +2074,7 @@ function tabNotFoundResponse(res, tabId) {
   // Only return 410 for tabs that look like valid UUIDs (plausibly created by this server),
   // belonged to this machine, and were lost in a recent browser restart.
   // Random/invalid strings like 'non-existent-tab' always get 404.
-  // Tab IDs may be Fly-prefixed: "{machineId}_{uuid}" — extract UUID portion for validation.
+  // Tab IDs may be Fly-prefixed: "{machineId}_{uuid}", extract UUID portion for validation.
   const uuidPart = tabId && tabId.includes('_') && !tabId.slice(0, tabId.indexOf('_')).includes('-')
     ? tabId.slice(tabId.indexOf('_') + 1)
     : tabId;
@@ -2155,7 +2158,7 @@ function pressureLockState(tabId) {
   };
 }
 
-async function bwlPressureCleanup(options = {}) {
+async function hwlPressureCleanup(options = {}) {
   const now = Date.now();
   const minIdleMs = Math.max(0, Number(options.minIdleMs ?? 10 * 60 * 1000));
   const maxTabsToClose = Math.max(0, Number(options.maxTabsToClose ?? 4));
@@ -2551,7 +2554,7 @@ const REFRESH_READY_TIMEOUT_MS = 2500;
 
 function markerFromRefInfo(info) {
   if (info?.marker) return info.marker;
-  const match = info?.selector?.match(/^\[data-bwl-ref="([^"]+)"\]$/);
+  const match = info?.selector?.match(/^\[data-hwl-ref="([^"]+)"\]$/);
   return match?.[1] || null;
 }
 
@@ -2574,17 +2577,17 @@ async function preserveRefIdentity(locator, info, refs, state) {
   // to that node while it is moved in the DOM.
   let marker;
   try {
-    marker = await locator.evaluate((element) => element.getAttribute('data-bwl-ref'));
+    marker = await locator.evaluate((element) => element.getAttribute('data-hwl-ref'));
   } catch {
     return null;
   }
 
   let refId = marker && state.byMarker.get(marker);
   if (!refId) refId = `e${state.nextId++}`;
-  marker ||= `bwl-ref-${refId}`;
+  marker ||= `hwl-ref-${refId}`;
 
   try {
-    await locator.evaluate((element, value) => element.setAttribute('data-bwl-ref', value), marker);
+    await locator.evaluate((element, value) => element.setAttribute('data-hwl-ref', value), marker);
   } catch {
     return null;
   }
@@ -2592,7 +2595,7 @@ async function preserveRefIdentity(locator, info, refs, state) {
   refs.set(refId, {
     ...info,
     marker,
-    selector: `[data-bwl-ref="${marker}"]`,
+    selector: `[data-hwl-ref="${marker}"]`,
   });
   return refId;
 }
@@ -2764,7 +2767,7 @@ async function _buildRefsInner(page, refs, start, existingRefs) {
         
         log('debug', 'buildRefs: processed iframe', { frameName, frameUrl: frameUrl.slice(0, 80), refs: refCounter - 1 });
       } catch (err) {
-        // Frame might have navigated away or be inaccessible — skip silently
+        // Frame might have navigated away or be inaccessible, skip silently
         log('debug', 'buildRefs: iframe snapshot failed', { frameName, error: err.message?.slice(0, 80) });
       }
     }
@@ -2806,8 +2809,8 @@ async function _buildRefsInner(page, refs, start, existingRefs) {
             if (style.display === 'none' || style.visibility === 'hidden') continue;
             const text = (el.textContent || '').trim().slice(0, 60);
             if (!text) continue;
-            const marker = `bwl-dom-${out.length}`;
-            el.setAttribute('data-bwl-ref', marker);
+            const marker = `hwl-dom-${out.length}`;
+            el.setAttribute('data-hwl-ref', marker);
             out.push({ marker, text });
           }
           return out;
@@ -2818,7 +2821,7 @@ async function _buildRefsInner(page, refs, start, existingRefs) {
       for (const { marker, text } of candidates) {
         if (refCounter > MAX_SNAPSHOT_NODES) break;
         const refId = `e${refCounter++}`;
-        refs.set(refId, { selector: `[data-bwl-ref="${marker}"]`, name: text });
+        refs.set(refId, { selector: `[data-hwl-ref="${marker}"]`, name: text });
       }
       if (candidates.length > 0) {
         log('info', 'buildRefs: added DOM-clickable fallback refs', { count: candidates.length });
@@ -2889,7 +2892,7 @@ async function getAriaSnapshot(page) {
       
       iframeYamls.push(`- iframe "${label}":\n${frameYaml.split('\n').map(l => '  ' + l).join('\n')}`);
     } catch {
-      // Frame inaccessible — skip
+      // Frame inaccessible, skip
     }
   }
   
@@ -2921,7 +2924,7 @@ function refToLocator(page, ref, refs) {
       locator = locator.nth(nth);
       return locator;
     }
-    // Frame not found (navigated away?) — fall through to page-level resolution
+    // Frame not found (navigated away?), fall through to page-level resolution
     log('warn', 'refToLocator: frame not found for iframe ref', { ref, frameName, frameUrl: frameUrl?.slice(0, 60) });
   }
 
@@ -3038,7 +3041,7 @@ app.get('/health', (req, res) => {
 
   // Browser not running: distinguish intentional idle stop from unexpected death
   if (!running && _lastBrowserStopReason && !INTENTIONAL_STOP_REASONS.has(_lastBrowserStopReason)) {
-    // Unexpected browser absence — schedule recovery and report unhealthy
+    // Unexpected browser absence, schedule recovery and report unhealthy
     scheduleBrowserWarmRetry();
     return res.status(503).json({
       ok: false,
@@ -3170,7 +3173,7 @@ app.get('/metrics', async (_req, res) => {
  */
 app.post('/pressure/cleanup', async (req, res) => {
   try {
-    const result = await bwlPressureCleanup(req.body || {});
+    const result = await hwlPressureCleanup(req.body || {});
     log('info', 'pressure cleanup', {
       dryRun: result.dryRun,
       beforeTabs: result.before.tabs,
@@ -3260,7 +3263,7 @@ app.post('/pressure/cleanup', async (req, res) => {
  */
 app.post('/tabs', async (req, res) => {
   // The tab is registered before navigation, so a failed or timed-out create
-  // must tear it down — the caller never receives its tabId.
+  // must tear it down, the caller never receives its tabId.
   let pendingTab = null;
   try {
     // Reject bad URLs before a browser or burner profile is spun up for them.
@@ -3288,7 +3291,7 @@ app.post('/tabs', async (req, res) => {
       return res.status(400).json({ error: 'userId and sessionKey required' });
     }
 
-    // Session overflow redirect (Fly.io only) — if this machine is above its
+    // Session overflow redirect (Fly.io only), if this machine is above its
     // fair share of sessions and the user doesn't already have one here,
     // bounce back through the Fly Proxy to land on a less-loaded machine.
     if (FLY_MACHINE_ID) {
@@ -3299,7 +3302,7 @@ app.post('/tabs', async (req, res) => {
         log('info', 'session overflow redirect', {
           userId: key, sessions: sessions.size, cap: PER_MACHINE_SESSION_CAP,
         });
-        res.set('fly-replay', `app=${CONFIG.flyAppName || 'bloom-web-link'}`);
+        res.set('fly-replay', `app=${CONFIG.flyAppName || 'halo-web-link'}`);
         return res.status(307).send();
       }
     }
@@ -3319,11 +3322,11 @@ app.post('/tabs', async (req, res) => {
       let totalTabs = 0;
       for (const group of session.tabGroups.values()) totalTabs += group.size;
       
-      // At the limit: recycle the least-used tab when BWL_RECYCLE_TABS=true, otherwise refuse.
+      // At the limit: recycle the least-used tab when HWL_RECYCLE_TABS=true, otherwise refuse.
       if (totalTabs >= MAX_TABS_PER_SESSION || getTotalTabCount() >= MAX_TABS_GLOBAL) {
         const recycled = await recycleOldestTab(session, req.reqId, userId);
         if (!recycled) {
-          throw Object.assign(new Error(`Tab limit reached (${MAX_TABS_PER_SESSION} per session, ${MAX_TABS_GLOBAL} total). Close a tab you no longer need (bwl_close_tab) and try again.`), { statusCode: 429, code: 'tab_limit' });
+          throw Object.assign(new Error(`Tab limit reached (${MAX_TABS_PER_SESSION} per session, ${MAX_TABS_GLOBAL} total). Close a tab you no longer need (hwl_close_tab) and try again.`), { statusCode: 429, code: 'tab_limit' });
         }
       }
       
@@ -3412,7 +3415,7 @@ app.post('/tabs', async (req, res) => {
       }
       await destroyTimedOutTab(session, tabId, 'create_failed', req.body?.userId);
     }
-    // SSL certificate errors on initial navigation — non-retriable
+    // SSL certificate errors on initial navigation, non-retriable
     const isSslError = err.message && (
       err.message.includes('SEC_ERROR') ||
       err.message.includes('SSL_ERROR') ||
@@ -3427,7 +3430,7 @@ app.post('/tabs', async (req, res) => {
     }
     // Memory pressure / max sessions → bounce through LB to another machine
     if (FLY_MACHINE_ID && err.statusCode === 503) {
-      res.set('fly-replay', `app=${CONFIG.flyAppName || 'bloom-web-link'}`);
+      res.set('fly-replay', `app=${CONFIG.flyAppName || 'halo-web-link'}`);
       return res.status(503).json({ error: safeError(err), code: err.code || 'admission_rejected' });
     }
     handleRouteError(err, req, res);
@@ -3866,7 +3869,7 @@ app.post('/tabs/:tabId/navigate', async (req, res) => {
     if (is400) {
       return res.status(400).json({ error: err.message });
     }
-    // SSL certificate errors — site has a bad/self-signed cert. Non-retriable.
+    // SSL certificate errors, site has a bad/self-signed cert. Non-retriable.
     const isSslError = err.message && (
       err.message.includes('SEC_ERROR') ||
       err.message.includes('SSL_ERROR') ||
@@ -4768,7 +4771,7 @@ app.post('/tabs/:tabId/click', async (req, res) => {
  *       unless continueOnError is true. Refs are refreshed after each click, type, and navigation,
  *       preserving DOM identity across dynamic reordering before the next action runs.
  *       This is a simplified/faster path: it does not include the Google-SERP-specific handling that
- *       the individual bwl_click/bwl_navigate tools have, so prefer those for search result pages.
+ *       the individual hwl_click/hwl_navigate tools have, so prefer those for search result pages.
  *     parameters:
  *       - name: tabId
  *         in: path
@@ -5214,7 +5217,7 @@ function uploadSourceError(message, code, statusCode = 400) {
 
 /**
  * Turn the request's file source into what Playwright's setInputFiles takes.
- * Exactly one of `path` (inside BWL_UPLOADS_DIR), `url` (fetched server side)
+ * Exactly one of `path` (inside HWL_UPLOADS_DIR), `url` (fetched server side)
  * or `base64` (+ filename) must be given. `url` and `base64` stay in memory:
  * nothing is written to disk.
  * Returns { files, info, payloads } where `files` goes to setInputFiles,
@@ -5297,8 +5300,8 @@ async function loadUploadSource(body) {
  *     summary: Attach a file to an upload control
  *     description: >
  *       Attaches a file without going through the native OS file dialog. The
- *       file comes from exactly one source: `path` (inside BWL_UPLOADS_DIR,
- *       default ~/.bwl/uploads), `url` (fetched by the server, so the agent
+ *       file comes from exactly one source: `path` (inside HWL_UPLOADS_DIR,
+ *       default ~/.hwl/uploads), `url` (fetched by the server, so the agent
  *       never has to inline large files), or `base64` + `filename`. `url` and
  *       `base64` files stay in memory and are capped at 25 MB. Strategies, in
  *       order: (0) when a ref/selector is given, use the file input it is,
@@ -5346,7 +5349,7 @@ async function loadUploadSource(body) {
  *                 default: auto
  *                 description: "drop dispatches a synthetic drag-and-drop on the ref/selector instead of using a file input."
  *               path:
- *                 description: "Absolute path, or array of paths, that resolves within BWL_UPLOADS_DIR."
+ *                 description: "Absolute path, or array of paths, that resolves within HWL_UPLOADS_DIR."
  *                 oneOf:
  *                   - type: string
  *                   - type: array
@@ -5436,7 +5439,7 @@ app.post('/tabs/:tabId/upload', uploadJsonParser, async (req, res) => {
       // of one, or sits inside a drop zone/section that holds exactly one. This
       // picks the RIGHT input on forms with several (CV + cover letter).
       const trySetTargetInput = async () => {
-        const token = `bwl-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const token = `hwl-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         let marked = false;
         try {
           marked = await locator.evaluate((el, { token, depth }) => {
@@ -5455,19 +5458,19 @@ app.post('/tabs/:tabId/upload', uploadJsonParser, async (req, res) => {
               }
             }
             if (!input) return false;
-            input.setAttribute('data-bwl-upload', token);
+            input.setAttribute('data-hwl-upload', token);
             return true;
           }, { token, depth: UPLOAD_ANCESTOR_DEPTH }, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
           if (!marked) return false;
-          await tabState.page.locator(`[data-bwl-upload="${token}"]`).setInputFiles(paths, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
+          await tabState.page.locator(`[data-hwl-upload="${token}"]`).setInputFiles(paths, { timeout: UPLOAD_INPUT_TIMEOUT_MS });
           return true;
         } catch (e) {
           log('info', 'upload: setInputFiles on target input failed', { error: e.message });
           return false;
         } finally {
           if (marked) {
-            await tabState.page.locator(`[data-bwl-upload="${token}"]`)
-              .evaluate((n) => n.removeAttribute('data-bwl-upload'), null, { timeout: UPLOAD_INPUT_TIMEOUT_MS })
+            await tabState.page.locator(`[data-hwl-upload="${token}"]`)
+              .evaluate((n) => n.removeAttribute('data-hwl-upload'), null, { timeout: UPLOAD_INPUT_TIMEOUT_MS })
               .catch(() => {});
           }
         }
@@ -5538,7 +5541,7 @@ app.post('/tabs/:tabId/upload', uploadJsonParser, async (req, res) => {
 
         // The trigger may surface EITHER UI path (LinkedIn A/B-tests both, and
         // its "Add media" control opens a native chooser AND mounts a hidden
-        // panel <input>). We must attach the file EXACTLY ONCE — attaching via
+        // panel <input>). We must attach the file EXACTLY ONCE, attaching via
         // both paths produces a duplicate ("1 of 2") image. So this is a
         // PREFERENCE order, not a race:
         //   1. Poll for an in-app <input type=file> and setInputFiles on it
@@ -5566,7 +5569,7 @@ app.post('/tabs/:tabId/upload', uploadJsonParser, async (req, res) => {
         // sitting on fcPromise. fcPromise is already .catch()'d to null so it
         // can never reject; Playwright intercepts file choosers (no real OS
         // dialog is left open), so an un-actioned chooser is harmless and needs
-        // no cancel() — which FileChooser doesn't expose in this PW version
+        // no cancel(), which FileChooser doesn't expose in this PW version
         // anyway. Nothing to do here; documented so nobody re-adds a second
         // setFiles (that was the source of the duplicate-image bug).
 
@@ -5990,7 +5993,7 @@ app.post('/tabs/:tabId/scroll', async (req, res) => {
  *     summary: Set the page viewport size
  *     description: >
  *       Physically resizes the page via Playwright's `page.setViewportSize`,
- *       triggering a real layout reflow. Use for responsive testing —
+ *       triggering a real layout reflow. Use for responsive testing:
  *       `window.resizeTo()` is a no-op on non-popup windows.
  *     parameters:
  *       - name: tabId
@@ -7532,8 +7535,8 @@ async function deleteProfile(profile, reason) {
  *               burner: { type: boolean }
  *               screen: { type: string, description: 'Screen size as WIDTHxHEIGHT (default 1920x1080)' }
  *               os: { type: string, enum: [windows, macos, linux], description: 'Spoofed operating system (default: the host OS)' }
- *               locale: { type: string, description: 'Browser locale such as fr-FR (default: follows the proxy or BWL_LOCALE)' }
- *               timezone: { type: string, description: 'IANA timezone such as Europe/Paris (default: follows the proxy or BWL_TIMEZONE)' }
+ *               locale: { type: string, description: 'Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)' }
+ *               timezone: { type: string, description: 'IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)' }
  *               settings: { $ref: '#/components/schemas/ProfileSettings' }
  *     responses:
  *       201:
@@ -7582,8 +7585,8 @@ app.post('/profiles', (req, res) => {
  *             properties:
  *               screen: { type: string, description: 'Screen size as WIDTHxHEIGHT (default 1920x1080)' }
  *               os: { type: string, enum: [windows, macos, linux], description: 'Spoofed operating system (default: the host OS)' }
- *               locale: { type: string, description: 'Browser locale such as fr-FR (default: follows the proxy or BWL_LOCALE)' }
- *               timezone: { type: string, description: 'IANA timezone such as Europe/Paris (default: follows the proxy or BWL_TIMEZONE)' }
+ *               locale: { type: string, description: 'Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)' }
+ *               timezone: { type: string, description: 'IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)' }
  *     responses:
  *       200:
  *         description: The profile with its new fingerprint.
@@ -7758,7 +7761,7 @@ app.post('/profiles/:profile/restore', (req, res) => {
 });
 
 // Burner retention: wipe burners (storage, history, fingerprint) unused for
-// BWL_BURNER_TTL_DAYS. Named profiles are kept until explicitly deleted.
+// HWL_BURNER_TTL_DAYS. Named profiles are kept until explicitly deleted.
 async function sweepExpiredBurners() {
   const ttlMs = CONFIG.burnerTtlDays * 24 * 60 * 60 * 1000;
   for (const profile of profileRegistry.expired(Date.now(), ttlMs)) {
@@ -7792,7 +7795,7 @@ setInterval(() => {
   refreshTabLockQueueDepth();
 }, 60_000);
 
-// Memory pressure eviction (Fly.io only) — evict oldest session when RAM is high.
+// Memory pressure eviction (Fly.io only), evict oldest session when RAM is high.
 // Prevents Camoufox OOM by proactively freeing BrowserContexts.
 if (FLY_MACHINE_ID) {
   const MEMORY_HIGH_WATERMARK = 0.80;
@@ -7838,7 +7841,7 @@ if (FLY_MACHINE_ID) {
   }, 30_000);
 }
 
-// Per-tab inactivity reaper — close tabs idle for TAB_INACTIVITY_MS
+// Per-tab inactivity reaper, close tabs idle for TAB_INACTIVITY_MS
 setInterval(() => {
   const now = Date.now();
   for (const [userId, session] of sessions) {
@@ -8263,7 +8266,7 @@ app.post('/tabs/open', async (req, res) => {
     if (totalTabs >= MAX_TABS_PER_SESSION || getTotalTabCount() >= MAX_TABS_GLOBAL) {
       const recycled = await recycleOldestTab(session, req.reqId, userId);
       if (!recycled) {
-        return res.status(429).json({ error: `Tab limit reached (${MAX_TABS_PER_SESSION} per session, ${MAX_TABS_GLOBAL} total). Close a tab you no longer need (bwl_close_tab) and try again.`, code: 'tab_limit' });
+        return res.status(429).json({ error: `Tab limit reached (${MAX_TABS_PER_SESSION} per session, ${MAX_TABS_GLOBAL} total). Close a tab you no longer need (hwl_close_tab) and try again.`, code: 'tab_limit' });
       }
     }
     

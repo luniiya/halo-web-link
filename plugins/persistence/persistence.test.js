@@ -12,7 +12,7 @@ describe('profile persistence helpers', () => {
   let tmpDir;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bwl-persistence-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hwl-persistence-'));
   });
 
   afterEach(async () => {

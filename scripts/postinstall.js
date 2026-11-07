@@ -8,7 +8,7 @@
 //      which leaves the binary cache empty and makes the server crash at
 //      runtime with "Version information not found".
 //   2. Verifies the cache after fetch and prints a warning with actionable
-//      remediation if the binary is still missing — the server will fail
+//      remediation if the binary is still missing, the server will fail
 //      at startup, but install itself succeeds so plugin installs don't break.
 //
 // Exit behavior:
@@ -26,7 +26,7 @@ import { pathToFileURL } from 'node:url';
 const EXTERNAL_EXECUTABLE_ENV_VARS = [
   'CAMOUFOX_EXECUTABLE',
   'CAMOUFOX_EXECUTABLE_PATH',
-  'BWL_EXECUTABLE_PATH',
+  'HWL_EXECUTABLE_PATH',
 ];
 
 const FETCH_CHILD_ENV_VARS = [
@@ -72,10 +72,10 @@ const FETCH_CHILD_ENV_VARS = [
   'NPM_CONFIG_FETCH_RETRY_MINTIMEOUT',
   'NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT',
   'NPM_CONFIG_FETCH_TIMEOUT',
-  'BWL_SKIP_DOWNLOAD',
+  'HWL_SKIP_DOWNLOAD',
   'CAMOUFOX_EXECUTABLE',
   'CAMOUFOX_EXECUTABLE_PATH',
-  'BWL_EXECUTABLE_PATH',
+  'HWL_EXECUTABLE_PATH',
   'CAMOUFOX_CACHE_DIR',
   'GITHUB_TOKEN',
 ];
@@ -88,7 +88,7 @@ function camoufoxCacheDir() {
 }
 
 function warn(message) {
-  process.stderr.write(`[bloom-web-link] postinstall warning: ${message}\n`);
+  process.stderr.write(`[halo-web-link] postinstall warning: ${message}\n`);
 }
 
 function fail(message) {
@@ -126,9 +126,9 @@ function assertExternalExecutable(path) {
 }
 
 export async function main() {
-  // Skip binary download entirely when BWL_SKIP_DOWNLOAD is set.
-  if (process.env.BWL_SKIP_DOWNLOAD === '1' || process.env.BWL_SKIP_DOWNLOAD === 'true') {
-    process.stderr.write('[bloom-web-link] postinstall: skipping binary download (BWL_SKIP_DOWNLOAD=1)\n');
+  // Skip binary download entirely when HWL_SKIP_DOWNLOAD is set.
+  if (process.env.HWL_SKIP_DOWNLOAD === '1' || process.env.HWL_SKIP_DOWNLOAD === 'true') {
+    process.stderr.write('[halo-web-link] postinstall: skipping binary download (HWL_SKIP_DOWNLOAD=1)\n');
     return;
   }
 
@@ -136,15 +136,15 @@ export async function main() {
   if (externalExecutable) {
     assertExternalExecutable(externalExecutable.value);
     process.stdout.write(
-      `[bloom-web-link] postinstall: ${externalExecutable.name} is set; skipping bundled Camoufox download.\n`
+      `[halo-web-link] postinstall: ${externalExecutable.name} is set; skipping bundled Camoufox download.\n`
     );
     return;
   }
 
-  // Check if binary is already cached — skip download entirely if so.
+  // Check if binary is already cached, skip download entirely if so.
   const versionFile = join(camoufoxCacheDir(), 'version.json');
   if (existsSync(versionFile)) {
-    process.stdout.write('[bloom-web-link] postinstall: Camoufox binary already cached.\n');
+    process.stdout.write('[halo-web-link] postinstall: Camoufox binary already cached.\n');
     return;
   }
 
@@ -166,7 +166,7 @@ export async function main() {
     warn(`  Expected file: ${versionFile}`);
     warn('  Possible causes:');
     warn('    - Network failure during binary download (check your connection)');
-    warn('    - GitHub API rate limit — set GITHUB_TOKEN in your env and retry');
+    warn('    - GitHub API rate limit, set GITHUB_TOKEN in your env and retry');
     warn('    - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD re-exported by a wrapping process');
     warn('  Manual fix:  npx camoufox-js fetch');
   }

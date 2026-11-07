@@ -86,7 +86,7 @@ describe("core requests", () => {
   test("carry the internal key and the dashboard source label", async () => {
     await post(open, "/api/click", { userId: "u1", tabId: "t1", x: 1, y: 2 });
     expect(lastSeen().headers.get("authorization")).toBe("Bearer internal-test");
-    expect(lastSeen().headers.get("x-bwl-source")).toBe("dashboard");
+    expect(lastSeen().headers.get("x-hwl-source")).toBe("dashboard");
     expect(lastSeen()).toMatchObject({ path: "/tabs/t1/click", body: { userId: "u1", coordinates: { x: 1, y: 2 } } });
   });
 });
@@ -156,9 +156,9 @@ describe("/api/config mcpUrl", () => {
   test("follows the dashboard host, honours a TLS proxy, and can be overridden", async () => {
     const viaProxy = await fetch(url(open, "/api/config"), { headers: { "X-Forwarded-Proto": "https" } });
     expect((await viaProxy.json() as { mcpUrl: string }).mcpUrl).toBe(`https://127.0.0.1:${containerConfig.mcpPort}/mcp`);
-    const pinned = await startWebUi({ ...baseConfig, publicAccessKey: "", publicMcpUrl: "https://bwl.example/mcp" });
+    const pinned = await startWebUi({ ...baseConfig, publicAccessKey: "", publicMcpUrl: "https://hwl.example/mcp" });
     try {
-      expect((await (await fetch(url(pinned, "/api/config"))).json() as { mcpUrl: string }).mcpUrl).toBe("https://bwl.example/mcp");
+      expect((await (await fetch(url(pinned, "/api/config"))).json() as { mcpUrl: string }).mcpUrl).toBe("https://hwl.example/mcp");
     } finally { pinned.stop(true); }
   });
 });

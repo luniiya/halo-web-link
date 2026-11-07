@@ -1,24 +1,24 @@
 {
-  "name": "@luniiya/bloom-web-link-mcp",
+  "name": "@luniiya/halo-web-link-mcp",
   "version": "2.0.0",
-  "description": "Standalone stdio MCP server exposing the bloom-web-link REST API as MCP tools (Claude Code, Codex, agy, Cursor, opencode). Proxies to an already-running bloom-web-link REST server — does not itself require the browser binary, Playwright, or the core server's dependencies. Initial MCP implementation contributed by @epicsagas.",
+  "description": "Standalone stdio MCP server exposing the halo-web-link REST API as MCP tools (Claude Code, Codex, agy, Cursor, opencode). Proxies to an already-running halo-web-link REST server, does not itself require the browser binary, Playwright, or the core server's dependencies. Initial MCP implementation contributed by @epicsagas.",
   "type": "module",
   "main": "server.mjs",
   "license": "MIT",
   "author": "Luniiya",
-  "homepage": "https://github.com/luniiya/bloom-web-link/tree/main/mcp#readme",
+  "homepage": "https://github.com/luniiya/halo-web-link/tree/main/mcp#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/luniiya/bloom-web-link.git",
+    "url": "git+https://github.com/luniiya/halo-web-link.git",
     "directory": "mcp"
   },
   "bugs": {
-    "url": "https://github.com/luniiya/bloom-web-link/issues"
+    "url": "https://github.com/luniiya/halo-web-link/issues"
   },
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "bwl",
+    "hwl",
     "camoufox",
     "browser-automation",
     "claude-code",
@@ -34,7 +34,7 @@
     "darwin"
   ],
   "bin": {
-    "bloom-web-link-mcp": "server.mjs"
+    "halo-web-link-mcp": "server.mjs"
   },
   "files": [
     "server.mjs",

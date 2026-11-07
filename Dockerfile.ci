@@ -1,4 +1,4 @@
-# CI/CD Dockerfile — downloads binaries during build (no bind mounts needed).
+# CI/CD Dockerfile: downloads binaries during build (no bind mounts needed).
 # For local builds with pre-downloaded binaries, use the default Dockerfile + Makefile.
 
 FROM oven/bun:1.4.0 AS bun-runtime
@@ -78,7 +78,7 @@ RUN npm ci --omit=dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY server.js ./
-COPY bwl.config.json ./
+COPY hwl.config.json ./
 COPY lib/ ./lib/
 COPY src/ ./src/
 # lib/cookies.js re-exports mcp/lib/cookies.mjs for persistence support.
@@ -98,9 +98,9 @@ RUN case "${TARGETARCH}" in \
     sh scripts/install-plugin-deps.sh
 
 ENV NODE_ENV=production
-ENV BWL_MCP_PORT=9377
-ENV BWL_WEB_PORT=6080
-ENV BWL_INTERNAL_PORT=9378
+ENV HWL_MCP_PORT=9377
+ENV HWL_WEB_PORT=6080
+ENV HWL_INTERNAL_PORT=9378
 
 EXPOSE 9377 6080
 

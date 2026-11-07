@@ -1,35 +1,35 @@
 services:
-  bwl:
+  hwl:
     build:
       context: .
-    image: bloom-web-link:local
+    image: halo-web-link:local
     restart: unless-stopped
     shm_size: 2gb
     ports:
       # Same port inside and out, so the dashboard's agent prompt can derive
-      # the MCP URL. Set BWL_PUBLIC_MCP_URL when agents reach it some other way.
-      - "127.0.0.1:${BWL_MCP_PORT:-9377}:${BWL_MCP_PORT:-9377}"
-      - "127.0.0.1:${BWL_WEB_PORT:-6080}:${BWL_WEB_PORT:-6080}"
+      # the MCP URL. Set HWL_PUBLIC_MCP_URL when agents reach it some other way.
+      - "127.0.0.1:${HWL_MCP_PORT:-9377}:${HWL_MCP_PORT:-9377}"
+      - "127.0.0.1:${HWL_WEB_PORT:-6080}:${HWL_WEB_PORT:-6080}"
     environment:
-      BWL_MCP_PORT: ${BWL_MCP_PORT:-9377}
-      BWL_WEB_PORT: ${BWL_WEB_PORT:-6080}
-      BWL_PUBLIC_MCP_URL: ${BWL_PUBLIC_MCP_URL:-}
-      BWL_ACCESS_KEY: ${BWL_ACCESS_KEY:-}
-      BWL_API_KEY: ${BWL_API_KEY:-}
-      BWL_ADMIN_KEY: ${BWL_ADMIN_KEY:-}
+      HWL_MCP_PORT: ${HWL_MCP_PORT:-9377}
+      HWL_WEB_PORT: ${HWL_WEB_PORT:-6080}
+      HWL_PUBLIC_MCP_URL: ${HWL_PUBLIC_MCP_URL:-}
+      HWL_ACCESS_KEY: ${HWL_ACCESS_KEY:-}
+      HWL_API_KEY: ${HWL_API_KEY:-}
+      HWL_ADMIN_KEY: ${HWL_ADMIN_KEY:-}
       # Local interactive browsing must survive ordinary pauses and compaction.
       SESSION_TIMEOUT_MS: ${SESSION_TIMEOUT_MS:-0}
       TAB_INACTIVITY_MS: ${TAB_INACTIVITY_MS:-0}
     volumes:
-      - bwl-data:/root/.bwl
+      - hwl-data:/root/.hwl
       # Live-edit the dashboard: changes apply on browser reload, no rebuild.
       - ./src/web-ui:/app/src/web-ui:ro
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${BWL_MCP_PORT:-9377}/gateway/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${HWL_MCP_PORT:-9377}/gateway/health"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
 
 volumes:
-  bwl-data:
+  hwl-data:

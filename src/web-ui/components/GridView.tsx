@@ -1,76 +1,148 @@
+import { useState, type FormEvent, type ReactNode } from "react";
+import { toUrl } from "../address.ts";
+import { closureLabel } from "../lifetime.ts";
+import { openTab } from "../route.ts";
 import type { ClosedEntry, Profile, State, TabRef } from "../types.ts";
-import { ProfileList } from "./ProfileList.tsx";
-import type { ProfileInput } from "./ProfileDialog.tsx";
+import { BanIcon, GlobeIcon, PlusIcon, SettingsIcon, TrashIcon } from "./icons.tsx";
 import { TabCard } from "./TabCard.tsx";
 
 type Props = {
   hidden: boolean;
-  /** Why the core can't be reached; null when it answers. */
-  connError?: string | null;
   state: State | null;
   open: TabRef[];
   closed: ClosedEntry[];
+  /** Profile the page is narrowed to; null shows every tab. */
+  filter?: string | null;
+  /** Shown at the right of the page head (the Connect your agent control). */
+  actions?: ReactNode;
+  onConfigureProfile?: (profile: Profile) => void;
+  /** Moves the profile to the trash. */
   onDeleteProfile?: (name: string) => void;
-  onCreateProfile?: (input: ProfileInput) => Promise<boolean>;
-  onConfigureProfile?: (name: string, input: ProfileInput) => Promise<boolean>;
-  onRegenerateProfile?: (name: string, input: ProfileInput) => Promise<boolean>;
-  loadTrash?: () => Promise<Profile[] | null>;
-  onRestoreProfile?: (name: string) => Promise<boolean>;
+  /** Opens a tab in a profile; resolves false when the core refused. */
+  onOpenTab?: (profile: string, url: string) => Promise<boolean>;
 };
 
-export function GridView({ hidden, connError = null, state, open, closed, onDeleteProfile, onCreateProfile, onConfigureProfile, onRegenerateProfile, loadTrash, onRestoreProfile }: Props) {
+const OS_NAMES = { windows: "Windows", macos: "macOS", linux: "Linux" } as const;
+const CLOSED_SHOWN = 8;
+
+// Start page: open a tab, see what is open, and what closed recently;
+// narrowed to one profile when one is picked in the sidebar.
+export function GridView({ hidden, state, open, closed, filter = null, actions, onConfigureProfile, onDeleteProfile, onOpenTab }: Props) {
+  const profiles = state?.profiles ?? [];
+  const profile = filter ? profiles.find((p) => p.name === filter) ?? null : null;
+  const shownOpen = filter ? open.filter(({ session }) => session.profile === filter) : open;
+  const shownClosed = filter ? closed.filter(({ session }) => session.profile === filter) : closed;
+
   return (
     <section id="grid-view" hidden={hidden}>
-      <section className="summary" aria-live="polite">
-        <div><strong id="session-count">{state ? state.sessions.length : 0}</strong><span>sessions</span></div>
-        <div><strong id="tab-count">{open.length}</strong><span>live tabs</span></div>
-        <div><strong id="updated">{state ? new Date(state.generatedAt).toLocaleTimeString() : "—"}</strong><span>last sync</span></div>
-        <BrowserStatus connError={connError} state={state} />
-      </section>
+      <div className="page-head">
+        <div className="page-title">
+          <p className="eyebrow">{profile ? (profile.kind === "burner" ? "Burner profile" : "Browser profile") : "Live browser"}</p>
+          <h2>{filter ?? "All tabs"}</h2>
+        </div>
+        {actions}
+      </div>
+
+      {profile && <ProfileDetails profile={profile} onConfigure={onConfigureProfile} onDelete={onDeleteProfile} />}
+
+      {onOpenTab && <NewTabBar key={filter ?? ""} profiles={profiles} preferred={filter} onOpen={onOpenTab} />}
 
       <section className="tab-section">
-        <h3 className="section-heading">Open</h3>
-        <p id="empty-open" className="empty-inline" hidden={!state || open.length > 0}>No open tabs. Connect an MCP client to <code>/mcp</code> — new agent tabs will appear here automatically.</p>
+        <h3 className="section-heading">Open <span className="section-count">{shownOpen.length}</span></h3>
+        <p id="empty-open" className="empty-inline" hidden={!state || shownOpen.length > 0}>
+          {filter ? <>No open tabs in {filter}. Open one above.</> : <>No open tabs. Connect an MCP client to <code>/mcp</code>, new agent tabs will appear here automatically.</>}
+        </p>
         <section id="grid-open" className="grid" aria-label="Open browser tabs">
-          {open.map(({ session, tab }) => <TabCard key={`${session.userId}:${tab.tabId}`} session={session} tab={tab} closed={false} />)}
+          {shownOpen.map(({ session, tab }) => <TabCard key={`${session.userId}:${tab.tabId}`} session={session} tab={tab} closed={false} />)}
         </section>
       </section>
 
-      <ProfileList profiles={state?.profiles ?? []} onDelete={onDeleteProfile} onCreate={onCreateProfile} onConfigure={onConfigureProfile} onRegenerate={onRegenerateProfile} loadTrash={loadTrash} onRestore={onRestoreProfile} />
-
-      <section className="tab-section">
-        <h3 className="section-heading">Closed</h3>
-        <p id="empty-closed" className="empty-inline" hidden={!state || closed.length > 0}>No closed tabs yet.</p>
-        <section id="grid-closed" className="grid grid-closed" aria-label="Recently closed tabs">
-          {closed.map(({ session, tab }) => <TabCard key={`${session.userId}:${tab.tabId}`} session={session} tab={tab} closed />)}
-        </section>
-      </section>
+      <ClosedList closed={shownClosed} loaded={!!state} />
     </section>
   );
 }
 
-// Browsers start lazily: each profile launches its own when an agent opens a
-// tab in it and stops after idling, so "idle" is the normal resting state.
-export function browserStatus(connError: string | null, state: State | null): { kind: string; value: string; label: string; title: string } {
-  if (connError) return { kind: "offline", value: "Offline", label: connError, title: connError };
-  if (!state) return { kind: "offline", value: "—", label: "browser", title: "" };
-  const crashed = (state.profiles ?? []).filter((p) => p.browserError);
-  if (crashed.length || state.browserError) {
-    const what = crashed.map((p) => `${p.name}: ${p.browserError!.reason}`).concat(state.browserError ? [`shared browser: ${state.browserError}`] : []);
-    return { kind: "crashed", value: "Crashed", label: crashed.length === 1 ? crashed[0]!.name : "browser", title: `Browser stopped unexpectedly. ${what.join("; ")}. It relaunches on the next tab.` };
-  }
-  const running = state.running || (state.profiles ?? []).some((p) => p.browserRunning);
-  return running
-    ? { kind: "running", value: "Running", label: "browser", title: "A browser is running" }
-    : { kind: "idle", value: "Idle", label: "browser", title: "No browser running. One starts when an agent opens a tab." };
+function ProfileDetails({ profile, onConfigure, onDelete }: { profile: Profile; onConfigure?: (profile: Profile) => void; onDelete?: (name: string) => void }) {
+  return (
+    <div id="profile-details" className="profile-row">
+      <span className={profile.kind === "burner" ? "profile-kind burner" : "profile-kind"}>{profile.kind}</span>
+      <span className="profile-ua" title={profile.userAgent ?? ""}>{profile.userAgent ?? "-"}</span>
+      {profile.screen && <span className="profile-screen" title="Spoofed screen and OS">{profile.screen.width}×{profile.screen.height}{profile.os ? ` · ${OS_NAMES[profile.os]}` : ""}</span>}
+      <span className="profile-meta">{profile.browserRunning ? `${profile.tabs} tab${profile.tabs === 1 ? "" : "s"} · running` : `idle · used ${new Date(profile.lastUsedAt).toLocaleDateString()}`}</span>
+      {onConfigure && <button type="button" className="profile-action profile-configure" aria-label={`Configure ${profile.name}`} title="Configure" onClick={() => onConfigure(profile)}><SettingsIcon /></button>}
+      {onDelete && (profile.default
+        ? <button type="button" className="profile-trash" disabled aria-label={`${profile.name} can't be deleted`} title="The default profile can't be deleted"><span className="trash-rest"><TrashIcon /></span><span className="trash-deny"><BanIcon /></span></button>
+        : <button type="button" className="profile-trash" aria-label={`Move ${profile.name} to the trash`} title="Move to trash" onClick={() => onDelete(profile.name)}><TrashIcon /></button>)}
+    </div>
+  );
 }
 
-function BrowserStatus({ connError, state }: { connError: string | null; state: State | null }) {
-  const { kind, value, label, title } = browserStatus(connError, state);
+// Closed tabs have no live screenshot left, so a compact list instead of cards.
+function ClosedList({ closed, loaded }: { closed: ClosedEntry[]; loaded: boolean }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? closed : closed.slice(0, CLOSED_SHOWN);
   return (
-    <div id="browser-status" className={`summary-status ${kind}`} title={title}>
-      <strong><span className="status-dot" aria-hidden="true"></span>{value}</strong>
-      <span>{label}</span>
-    </div>
+    <section className="tab-section">
+      <h3 className="section-heading">Recently closed <span className="section-count">{closed.length}</span></h3>
+      <p id="empty-closed" className="empty-inline" hidden={!loaded || closed.length > 0}>No closed tabs yet.</p>
+      <ul id="closed-list" className="closed-list" aria-label="Recently closed tabs">
+        {shown.map(({ session, tab, closedAt, reason }) => (
+          <li key={`${session.userId}:${tab.tabId}`}>
+            <button type="button" className="closed-row" title={closureLabel(reason)} onClick={() => openTab(session.userId, tab.tabId)}>
+              <span className="favicon"><GlobeIcon /></span>
+              <span className="closed-title">{tab.title || "Untitled tab"}</span>
+              <span className="closed-url">{tab.url}</span>
+              {session.profile && <span className="profile-pill">{session.profile}</span>}
+              <span className="closed-time">{timeAgo(closedAt)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {closed.length > CLOSED_SHOWN && (
+        <button id="closed-toggle" type="button" className="button button-ghost button-small" onClick={() => setAll(!all)}>{all ? "Show less" : `Show all (${closed.length})`}</button>
+      )}
+    </section>
+  );
+}
+
+export function timeAgo(at: number, now = Date.now()): string {
+  const minutes = Math.floor((now - at) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return new Date(at).toLocaleDateString();
+}
+
+// Address bar for a new tab: a URL, a host, or words to search for, in the chosen profile.
+function NewTabBar({ profiles, preferred, onOpen }: { profiles: Profile[]; preferred: string | null; onOpen: (profile: string, url: string) => Promise<boolean> }) {
+  const [address, setAddress] = useState("");
+  const [chosen, setChosen] = useState<string | null>(preferred);
+  const [busy, setBusy] = useState(false);
+  // Named profiles, plus the picked one when it is a burner.
+  const choices = profiles.filter((p) => p.kind === "named" || p.name === preferred);
+  const fallback = profiles.find((p) => p.default)?.name ?? choices[0]?.name ?? "";
+  const profile = chosen ?? fallback;
+  const url = toUrl(address);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!url || busy) return;
+    setBusy(true);
+    try {
+      if (await onOpen(profile, url)) setAddress("");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <form id="new-tab" className="new-tab-bar" onSubmit={submit}>
+      <input id="new-tab-address" className="new-tab-input" type="text" inputMode="url" autoComplete="off" spellCheck={false} placeholder="Search or enter an address" aria-label="Address for a new tab"
+        value={address} onChange={(event) => setAddress(event.target.value)} />
+      <select id="new-tab-profile" className="new-tab-select" aria-label="Browser profile" value={profile} onChange={(event) => setChosen(event.target.value)}>
+        {choices.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+        <option value="burner">New burner</option>
+      </select>
+      <button id="new-tab-button" type="submit" className="button" disabled={!url || busy}><PlusIcon />{busy ? "Opening…" : "Open tab"}</button>
+    </form>
   );
 }

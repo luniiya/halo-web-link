@@ -6,7 +6,7 @@ FROM oven/bun:1.4.0 AS bun-runtime
 # linked against GLIBC_2.38, so on bookworm it loads and then dies at runtime with
 # "version `GLIBC_2.38' not found" the first time a tab is opened. amd64 is
 # unaffected because that prebuild targets an older glibc.
-FROM node:22-trixie-slim AS bloom-web-link
+FROM node:22-trixie-slim AS halo-web-link
 
 COPY --from=bun-runtime /usr/local/bin/bun /usr/local/bin/bun
 
@@ -99,7 +99,7 @@ RUN npm ci --omit=dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY server.js ./
-COPY bwl.config.json ./
+COPY hwl.config.json ./
 COPY lib/ ./lib/
 COPY src/ ./src/
 # lib/cookies.js is a compatibility re-export from ../mcp/lib/cookies.mjs, so mcp/
@@ -115,19 +115,19 @@ COPY scripts/ ./scripts/
 RUN sh scripts/install-plugin-deps.sh
 
 ENV NODE_ENV=production
-ENV BWL_MCP_PORT=9377
-ENV BWL_WEB_PORT=6080
-ENV BWL_INTERNAL_PORT=9378
+ENV HWL_MCP_PORT=9377
+ENV HWL_WEB_PORT=6080
+ENV HWL_INTERNAL_PORT=9378
 
-LABEL org.opencontainers.image.source="https://github.com/luniiya/bloom-web-link"
+LABEL org.opencontainers.image.source="https://github.com/luniiya/halo-web-link"
 EXPOSE 9377 6080
 
 CMD ["bun", "run", "src/index.ts"]
 
 # Optional: rebuild plugin deps after adding third-party plugins
-# Usage: docker build --target with-plugins -t bloom-web-link .
-FROM bloom-web-link AS with-plugins
+# Usage: docker build --target with-plugins -t halo-web-link .
+FROM halo-web-link AS with-plugins
 COPY plugins/ ./plugins/
-COPY bwl.config.json ./
+COPY hwl.config.json ./
 COPY scripts/install-plugin-deps.sh /tmp/install-plugin-deps.sh
 RUN /tmp/install-plugin-deps.sh && rm /tmp/install-plugin-deps.sh

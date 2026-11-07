@@ -34,8 +34,8 @@ describe('no embedded secrets in distributed files', () => {
     expect(source).not.toMatch(/^import\s.*from\s+['"]node:fs['"]/m);
   });
 
-  test('bwl.config.json has no key material', () => {
-    const config = readFileSync(join(__dirname, '../../bwl.config.json'), 'utf-8');
+  test('hwl.config.json has no key material', () => {
+    const config = readFileSync(join(__dirname, '../../hwl.config.json'), 'utf-8');
     expect(config).not.toContain('keyA');
     expect(config).not.toContain('keyB');
     expect(config).not.toContain('PRIVATE KEY');

@@ -41,7 +41,7 @@ describe('interactive tab lifetime', () => {
 
 describe('closed tab recovery history', () => {
   let folder;
-  beforeEach(() => { folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bwl-history-')); });
+  beforeEach(() => { folder = fs.mkdtempSync(path.join(os.tmpdir(), 'hwl-history-')); });
   afterEach(() => { fs.rmSync(folder, { recursive: true, force: true }); });
   test('persists closure cause, saved URL and already-read text across restarts', () => {
     const file = path.join(folder, 'history.json');
@@ -103,7 +103,7 @@ describe('reply MutationObserver', () => {
     messages.push('par'); typing = true; mutation(); jest.advanceTimersByTime(200);
     messages[1] = 'complete'; typing = false; mutation(); jest.advanceTimersByTime(100);
     expect(await p).toMatchObject({ reason: 'reply', messages: ['old', 'complete'], typing: 'not_typing' });
-    expect(window.__bwlReplyWaits.size).toBe(0);
+    expect(window.__hwlReplyWaits.size).toBe(0);
   });
   test('reports timeout and unknown typing without a configured indicator', async () => {
     const p = observeReply({ ...options(), typingSelector: undefined });
@@ -111,7 +111,7 @@ describe('reply MutationObserver', () => {
     expect(await p).toMatchObject({ reason: 'timeout', typing: 'unknown' });
   });
   test('supports cancellation and removes observers and timers', async () => {
-    const p = observeReply(options()); window.__bwlReplyWaits.get('w')();
+    const p = observeReply(options()); window.__hwlReplyWaits.get('w')();
     expect(await p).toMatchObject({ reason: 'cancelled' });
     expect(jest.getTimerCount()).toBe(0);
   });

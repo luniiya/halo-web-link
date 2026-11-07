@@ -1,4 +1,4 @@
-// Run inside the BWL container: node /tmp/bwl-live-reliability.mjs
+// Run inside the HWL container: node /tmp/hwl-live-reliability.mjs
 import http from 'node:http';
 import assert from 'node:assert/strict';
 const base = 'http://127.0.0.1:9377';

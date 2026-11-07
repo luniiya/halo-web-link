@@ -26,7 +26,7 @@ function cors(response: Response): Response {
   headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   headers.set(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, MCP-Session-Id, X-BWL-User-Id",
+    "Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, MCP-Session-Id, X-HWL-User-Id",
   );
   headers.set("Access-Control-Expose-Headers", "MCP-Session-Id, MCP-Protocol-Version");
   return new Response(response.body, { status: response.status, headers });
@@ -42,13 +42,13 @@ function publicBaseUrl(request: Request, config: ContainerConfig): string {
 
 function createProtocolServer(config: ContainerConfig, userId: string, baseForAgent: string): Server {
   const server = new Server(
-    { name: "bloom-web-link", version: config.packageVersion },
+    { name: "halo-web-link", version: config.packageVersion },
     {
       capabilities: { tools: {} },
       instructions:
-        "bwl is a real anti-detection browser: slower and heavier than built-in web tools. For simple lookups (search, docs, articles, static pages, APIs) " +
-        "prefer your built-in tools such as WebSearch/WebFetch or curl. Use bwl when those fail or can't do the job: bot blocks, captchas, " +
-        "JavaScript-only pages, logins/saved cookies, or anything interactive (forms, clicks, file uploads with bwl_upload, multi-step flows). " +
+        "hwl is a real anti-detection browser: slower and heavier than built-in web tools. For simple lookups (search, docs, articles, static pages, APIs) " +
+        "prefer your built-in tools such as WebSearch/WebFetch or curl. Use hwl when those fail or can't do the job: bot blocks, captchas, " +
+        "JavaScript-only pages, logins/saved cookies, or anything interactive (forms, clicks, file uploads with hwl_upload, multi-step flows). " +
         "These are defaults; use your own judgment. " +
         "Use snapshots to obtain refs, then click/type with those refs. Each HTTP MCP session has isolated browser storage.",
     },
@@ -84,7 +84,7 @@ function createProtocolServer(config: ContainerConfig, userId: string, baseForAg
       return { content: adaptResponse(spec, payload) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return { isError: true, content: [{ type: "text", text: `bwl error: ${message}` }] };
+      return { isError: true, content: [{ type: "text", text: `hwl error: ${message}` }] };
     }
   });
 
@@ -111,7 +111,7 @@ export function createMcpHandler(config: ContainerConfig) {
     }
 
     if (!transport && request.method === "POST" && isInitializeRequest(parsedBody)) {
-      const requestedUserId = safeUserId(request.headers.get("x-bwl-user-id"));
+      const requestedUserId = safeUserId(request.headers.get("x-hwl-user-id"));
       const userId = requestedUserId || `mcp-${randomUUID()}`;
       transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
@@ -119,7 +119,7 @@ export function createMcpHandler(config: ContainerConfig) {
         onsessioninitialized: (id) => { transports.set(id, transport!); },
         // An MCP transport is disposable; a browser session is not. Keeping
         // the latter alive lets a replacement agent reconnect with the same
-        // X-BWL-User-Id and continue its tab after a client disconnects.
+        // X-HWL-User-Id and continue its tab after a client disconnects.
         // Core session expiry and explicit DELETE /sessions/:userId remain the
         // lifecycle controls.
         onsessionclosed: (id) => { transports.delete(id); },

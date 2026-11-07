@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * bwl plugin manager -- install, remove, and list plugins.
+ * hwl plugin manager -- install, remove, and list plugins.
  *
  * Usage:
  *   node scripts/plugin.js install <source>   Install a plugin from git URL or local path
@@ -18,7 +18,7 @@
  * an index.js with register(), it's used directly. If it has a plugins/ subdir,
  * each subdirectory is installed as a separate plugin.
  *
- * After install, the plugin is added to bwl.config.json plugins[] and
+ * After install, the plugin is added to hwl.config.json plugins[] and
  * npm dependencies are installed if the plugin has a package.json.
  */
 
@@ -30,7 +30,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PLUGINS_DIR = path.join(ROOT, 'plugins');
-const CONFIG_PATH = path.join(ROOT, 'bwl.config.json');
+const CONFIG_PATH = path.join(ROOT, 'hwl.config.json');
 
 // -- Config helpers ----------------------------------------------------------
 
@@ -38,7 +38,7 @@ function readConfig() {
   try {
     return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
   } catch {
-    return { id: 'bloom-web-link', name: 'Bloom Web Link', version: '0.0.0', plugins: [] };
+    return { id: 'halo-web-link', name: 'Halo Web Link', version: '0.0.0', plugins: [] };
   }
 }
 
@@ -261,7 +261,7 @@ function listPlugins() {
   }
 
   if (configPlugins.size > 0) {
-    console.log(`\n${configPlugins.size} plugin(s) enabled in bwl.config.json`);
+    console.log(`\n${configPlugins.size} plugin(s) enabled in hwl.config.json`);
   } else {
     console.log('\nNo plugins[] in config -- all plugins are loaded');
   }
@@ -327,7 +327,7 @@ switch (action) {
   }
 
   default:
-    console.log(`bwl plugin manager
+    console.log(`hwl plugin manager
 
 Usage:
   node scripts/plugin.js install <source>   Install from git URL or local path

@@ -171,7 +171,7 @@ export function ProfileDialog({ mode, onClose, onSubmit, onNewFingerprint }: Pro
           </div>
           <span className="profile-field-hint">
             {profile && os !== (profile.os ?? "") ? "Changing the OS gives the profile a new fingerprint (fonts, GPU and user agent differ per OS). " : "User agent, fonts and taskbar of that OS. "}
-            Host matches the machine bwl runs on.
+            Host matches the machine hwl runs on.
           </span>
         </div>
 
@@ -185,7 +185,7 @@ export function ProfileDialog({ mode, onClose, onSubmit, onNewFingerprint }: Pro
             <input id="profile-timezone" className="profile-input" list="profile-timezones" placeholder="auto" value={timezone} spellCheck={false} autoComplete="off" onChange={(event) => setTimezone(event.target.value)} />
           </label>
         </div>
-        <span className="profile-field-hint profile-field-hint-tight">Leave on auto to follow the proxy's location (or the server's BWL_LOCALE / BWL_TIMEZONE).</span>
+        <span className="profile-field-hint profile-field-hint-tight">Leave on auto to follow the proxy's location (or the server's HWL_LOCALE / HWL_TIMEZONE).</span>
         <datalist id="profile-locales">{LOCALES.map((v) => <option key={v} value={v} />)}</datalist>
         <datalist id="profile-timezones">{TIMEZONES.map((v) => <option key={v} value={v} />)}</datalist>
 

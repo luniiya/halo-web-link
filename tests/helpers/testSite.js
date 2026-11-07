@@ -320,7 +320,7 @@ function createTestApp() {
   });
 
   app.get('/download-file', (req, res) => {
-    const body = 'hello from bwl test download\n';
+    const body = 'hello from hwl test download\n';
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', 'attachment; filename="hello.txt"');
     res.send(body);

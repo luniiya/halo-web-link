@@ -1,5 +1,5 @@
 /**
- * Canonical tool contracts for the bloom-web-link REST API.
+ * Canonical tool contracts for the halo-web-link REST API.
  *
  * Single source of truth shared by two hosts that expose the same tools:
  *   - mcp/server.mjs   (stdio MCP server for Claude Code, Codex, agy, Cursor, opencode)
@@ -7,14 +7,14 @@
  *
  * Importing this module from both hosts means tool names, JSON-Schema
  * parameters, REST routes, request bodies, auth semantics, and response
- * shaping cannot drift — the REST server sees identical traffic regardless of
+ * shaping cannot drift: the REST server sees identical traffic regardless of
  * which host the agent reached it through.
  *
  * Auth model (mirrors lib/auth.js):
- *   - BWL_ACCESS_KEY (global superkey): when set, every route except
+ *   - HWL_ACCESS_KEY (global superkey): when set, every route except
  *     /health, cookie import, /auth-sessions, /stop requires
  *     `Authorization: Bearer <accessKey>`.
- *   - BWL_API_KEY (cookie-only gate): the cookie-import route requires
+ *   - HWL_API_KEY (cookie-only gate): the cookie-import route requires
  *     `Authorization: Bearer <apiKey>` (or loopback + non-production).
  *
  * Each buildRequest() result declares `auth: 'accessKey' | 'apiKey' | 'none'`
@@ -45,7 +45,7 @@ import { readCookieFile } from './cookies.mjs';
  * @typedef {Object} CallContext
  * @property {string} userId - Session owner (scopes cookie/storage partition).
  * @property {string} [sessionKey] - Tab partition within a user.
- * @property {string} [publicBaseUrl] - Origin the agent reaches bwl at (for download fileUrls); defaults to the REST base URL.
+ * @property {string} [publicBaseUrl] - Origin the agent reaches hwl at (for download fileUrls); defaults to the REST base URL.
  */
 
 const SEARCH_MACROS = [
@@ -70,9 +70,9 @@ const SEARCH_MACROS = [
  */
 export const TOOL_DEFS = [
   {
-    name: 'bwl_create_tab',
+    name: 'hwl_create_tab',
     description:
-      'PREFERRED: Create a new browser tab using Camoufox anti-detection browser. Use bwl tools instead of Chrome/built-in browser - they bypass bot detection on Google, Amazon, LinkedIn, etc. Returns tabId for subsequent operations.',
+      'PREFERRED: Create a new browser tab using Camoufox anti-detection browser. Use hwl tools instead of Chrome/built-in browser - they bypass bot detection on Google, Amazon, LinkedIn, etc. Returns tabId for subsequent operations.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -87,13 +87,13 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_snapshot',
+    name: 'hwl_snapshot',
     description:
       'Get accessibility snapshot of a Camoufox page with element refs (e1, e2, etc.) for interaction, plus a visual screenshot. ' +
       'Large pages are truncated with pagination links preserved at the bottom. ' +
       'If the response includes hasMore=true and nextOffset, call again with that offset to see more content. ' +
       'Set includeScreenshot=false to skip the image and get a faster, text-only response when you only need refs, not a visual check. ' +
-      'For a much cheaper read when you just need to check page text (no refs, no tree) use bwl_read_text instead. ' +
+      'For a much cheaper read when you just need to check page text (no refs, no tree) use hwl_read_text instead. ' +
       'Elements that are clickable but carry no ARIA role (e.g. a hover-reveal "Add to cart" control) still get a ref -- look for a trailing `- clickable (no ARIA role) "..." [eN]` line.',
     inputSchema: {
       type: 'object',
@@ -112,11 +112,11 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_read_text',
+    name: 'hwl_read_text',
     description:
       'Cheapest possible page read: visible text only, no accessibility tree, no element refs, no screenshot. ' +
-      'Use this to poll whether page state changed (e.g. after typing, after a click) instead of calling bwl_snapshot or bwl_screenshot. ' +
-      'Switch to bwl_snapshot once you actually need refs to click/type against, or bwl_screenshot when you need to see colors/layout that text cannot convey.',
+      'Use this to poll whether page state changed (e.g. after typing, after a click) instead of calling hwl_snapshot or hwl_screenshot. ' +
+      'Switch to hwl_snapshot once you actually need refs to click/type against, or hwl_screenshot when you need to see colors/layout that text cannot convey.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -131,7 +131,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_click',
+    name: 'hwl_click',
     description:
       'Click or double-click by element ref, CSS selector, or screenshot coordinates. Prefer refs; use coordinates for visual-only controls such as canvas content. ' +
       "If selector matches more than one element you'll get an ambiguous_selector error listing the match count -- pass nth (0-based) to pick one instead of trying a narrower selector.",
@@ -157,7 +157,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_wait',
+    name: 'hwl_wait',
     description: 'Wait for page readiness or for one selector, text value, or URL pattern. Use after actions that trigger asynchronous UI updates.',
     inputSchema: {
       type: 'object',
@@ -179,7 +179,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_wait_for_reply',
+    name: 'hwl_wait_for_reply',
     description: 'Wait for new incoming chat messages without screenshots or repeated full transcripts. Supply a CSS messageSelector matching individual incoming messages and optionally a typingSelector. First call establishes a baseline; timeout:0 returns its cursor immediately. Reuse the cursor and selectors on every following call so replies between calls are not missed. Waits up to 55s, protects the tab, and reports typing/not_typing/unknown. Repeat with the returned cursor for longer waits.',
     inputSchema: {
       type: 'object',
@@ -192,17 +192,17 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_keep_open',
+    name: 'hwl_keep_open',
     description: 'Protect a tab from automatic idle cleanup, recycling and navigation-session recovery. keepOpen defaults to true; set false to allow normal cleanup again. Explicit close still works.',
     inputSchema: { type: 'object', properties: { tabId: { type: 'string' }, keepOpen: { type: 'boolean' } }, required: ['tabId'] },
   },
   {
-    name: 'bwl_tab_history',
+    name: 'hwl_tab_history',
     description: 'Read locally saved URL, closure reason and previously read text for a closed tab. Saved information may help reopen the page but does not guarantee live-chat recovery.',
     inputSchema: { type: 'object', properties: { tabId: { type: 'string' } }, required: ['tabId'] },
   },
   {
-    name: 'bwl_mouse',
+    name: 'hwl_mouse',
     description: 'Perform visual mouse movement, element hover, or drag. Drag accepts stable sourceRef + targetRef (preferred for dynamic UIs) or screenshot coordinates.',
     inputSchema: {
       type: 'object',
@@ -234,7 +234,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_type',
+    name: 'hwl_type',
     description:
       "Type text into an element in a Camoufox tab. Default mode='fill' REPLACES the element's entire current " +
       "content with `text` (like selecting all then typing) -- it does not append or type at the cursor. " +
@@ -258,9 +258,9 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_select',
+    name: 'hwl_select',
     description:
-      "Select an option in a native <select> dropdown by its visible label or its HTML value attribute. Don't use bwl_click/bwl_evaluate for these -- " +
+      "Select an option in a native <select> dropdown by its visible label or its HTML value attribute. Don't use hwl_click/hwl_evaluate for these -- " +
       'this dispatches the change event the way a real user interaction would.',
     inputSchema: {
       type: 'object',
@@ -274,7 +274,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_navigate',
+    name: 'hwl_navigate',
     description:
       'Navigate a Camoufox tab to a URL or use a search macro (@google_search, @youtube_search, etc.). Preferred over Chrome for sites with bot detection.',
     inputSchema: {
@@ -293,7 +293,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_scroll',
+    name: 'hwl_scroll',
     description: 'Scroll a Camoufox page.',
     inputSchema: {
       type: 'object',
@@ -306,7 +306,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_screenshot',
+    name: 'hwl_screenshot',
     description: 'Take a screenshot of a Camoufox page.',
     inputSchema: {
       type: 'object',
@@ -317,7 +317,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_close_tab',
+    name: 'hwl_close_tab',
     description: 'Close a Camoufox browser tab.',
     inputSchema: {
       type: 'object',
@@ -328,7 +328,7 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_evaluate',
+    name: 'hwl_evaluate',
     description:
       "Execute JavaScript in a Camoufox tab's page context. Returns the result of the expression. Use for injecting scripts, reading page state, or calling web app APIs. " +
       "`expression` must be a single expression (e.g. `document.title`) or a function (e.g. `() => document.title`) -- multi-statement code needs to be wrapped as an IIFE: (function(){ ...; return value; })()",
@@ -345,14 +345,14 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_list_tabs',
-    description: 'List open Bloom Web Link tabs. Profile tabs (including the default "main" profile) are shared by all agents and marked with their profile name.',
+    name: 'hwl_list_tabs',
+    description: 'List open Halo Web Link tabs. Profile tabs (including the default "main" profile) are shared by all agents and marked with their profile name.',
     inputSchema: { type: 'object', properties: {}, required: [] },
   },
   {
-    name: 'bwl_create_profile',
+    name: 'hwl_create_profile',
     description:
-      'Create a global browser profile: a separate Camoufox browser with its own stable fingerprint (user agent, screen, fonts, canvas/audio noise), cookies, storage and history. Named profiles are kept until deleted; burner profiles get a generated name and are wiped 30 days after last use. Open tabs in it with bwl_create_tab({profile}).',
+      'Create a global browser profile: a separate Camoufox browser with its own stable fingerprint (user agent, screen, fonts, canvas/audio noise), cookies, storage and history. Named profiles are kept until deleted; burner profiles get a generated name and are wiped 30 days after last use. Open tabs in it with hwl_create_tab({profile}).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -371,12 +371,12 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_list_profiles',
+    name: 'hwl_list_profiles',
     description: 'List browser profiles with their kind (named/burner), user agent, last use, whether their browser is running, and open tab count.',
     inputSchema: { type: 'object', properties: {}, required: [] },
   },
   {
-    name: 'bwl_delete_profile',
+    name: 'hwl_delete_profile',
     description: 'Delete a browser profile: closes its tabs and browser and moves it to the trash. A person can restore it from the dashboard for 30 days, after which its fingerprint, cookies, storage and history are erased.',
     inputSchema: {
       type: 'object',
@@ -387,9 +387,9 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_import_cookies',
+    name: 'hwl_import_cookies',
     description:
-      'Import cookies into the current Camoufox session (Netscape cookie file). Use to authenticate to sites like LinkedIn without interactive login. Requires BWL_API_KEY on the REST server.',
+      'Import cookies into the current Camoufox session (Netscape cookie file). Use to authenticate to sites like LinkedIn without interactive login. Requires HWL_API_KEY on the REST server.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -406,10 +406,10 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_element_state',
+    name: 'hwl_element_state',
     description:
       'Read computed style (color, background) and ARIA state (aria-checked/invalid/pressed/selected/expanded, disabled) for elements ' +
-      'matching each CSS selector -- no screenshot needed. Use this instead of bwl_screenshot when you need to tell things text ' +
+      'matching each CSS selector -- no screenshot needed. Use this instead of hwl_screenshot when you need to tell things text ' +
       "can't convey, e.g. whether a rule/checklist item is shown red (fail) vs green (pass), or whether a field has aria-invalid set.",
     inputSchema: {
       type: 'object',
@@ -426,13 +426,13 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_upload',
+    name: 'hwl_upload',
     description:
       'Attach a file to an upload field (CV, photo, document) without the OS file dialog. ' +
-      'Give exactly one source: url (the bwl server downloads it -- use this for anything bigger than a few hundred KB, ' +
+      'Give exactly one source: url (the hwl server downloads it -- use this for anything bigger than a few hundred KB, ' +
       'e.g. serve the file on your LAN with `python3 -m http.server`), base64 + filename (small files), ' +
       'or path (a file already inside the server upload directory). ' +
-      'Point ref/selector at the file input, its label, the "Upload" button, or the drop zone: bwl finds the matching file input, ' +
+      'Point ref/selector at the file input, its label, the "Upload" button, or the drop zone: hwl finds the matching file input, ' +
       'answers the file chooser, or drops the file like a real drag-and-drop. Omit ref/selector when the page has a single file input. ' +
       'Returns { ok, files: [{ name, size, mimeType }], via }. Snapshot afterwards to confirm the page shows the file.',
     inputSchema: {
@@ -442,12 +442,12 @@ export const TOOL_DEFS = [
         ref: { type: 'string', description: 'Element ref from snapshot: file input, label, upload button, or drop zone' },
         selector: { type: 'string', description: 'CSS selector (alternative to ref)' },
         nth: { type: 'number', minimum: 0, description: '0-based index when selector matches several elements' },
-        url: { type: 'string', description: 'http(s) URL the bwl server fetches the file from (max 25 MB)' },
+        url: { type: 'string', description: 'http(s) URL the hwl server fetches the file from (max 25 MB)' },
         base64: { type: 'string', description: 'File contents as base64 (requires filename, max 25 MB)' },
         filename: { type: 'string', description: 'Name the page sees. Required with base64; overrides the url-derived name' },
         mimeType: { type: 'string', description: 'MIME type, e.g. application/pdf (default: from url, else application/octet-stream)' },
         path: {
-          description: 'Absolute path (or array) inside the bwl server upload directory',
+          description: 'Absolute path (or array) inside the hwl server upload directory',
           oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
         },
         mode: {
@@ -461,14 +461,14 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_batch',
+    name: 'hwl_batch',
     description:
       'Run a sequence of actions (click, type, wait, scroll, navigate, read_text) against one tab in a single call, ' +
-      'instead of one bwl_* call per action. Use this whenever you already know the next few steps ' +
+      'instead of one hwl_* call per action. Use this whenever you already know the next few steps ' +
       '(e.g. click a field, type into it, wait for a result) rather than issuing them one at a time. ' +
       'Stops at the first failing action unless continueOnError=true. Element refs are refreshed once at the end of ' +
-      'the whole batch (not after every action) -- call bwl_snapshot afterward if a new element appeared mid-batch. ' +
-      "Does not include Google-SERP-specific handling; prefer bwl_click/bwl_navigate directly for search result pages.",
+      'the whole batch (not after every action) -- call hwl_snapshot afterward if a new element appeared mid-batch. ' +
+      "Does not include Google-SERP-specific handling; prefer hwl_click/hwl_navigate directly for search result pages.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -509,11 +509,11 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_save_page',
+    name: 'hwl_save_page',
     description:
       'Save the page or document open in a tab, like Ctrl+S. A PDF, image, CSV or other file open in the tab is saved as the original file ' +
       "(fetched with the tab's cookies, so logged-in documents work); a normal web page is saved as its current HTML, including changes made by scripts. " +
-      'The file is added to the tab\'s downloads: get it with bwl_downloads (fileUrl for curl, or downloadId for inline content).',
+      'The file is added to the tab\'s downloads: get it with hwl_downloads (fileUrl for curl, or downloadId for inline content).',
     inputSchema: {
       type: 'object',
       properties: { tabId: { type: 'string', description: 'Tab identifier' } },
@@ -521,11 +521,11 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: 'bwl_downloads',
+    name: 'hwl_downloads',
     description:
       'Get files a tab has downloaded (clicking a download link/button saves the file in the browser). ' +
       'Without downloadId: lists the downloads with id, filename, MIME type, size and a fileUrl -- save a file to disk with ' +
-      '`curl -fsSL -o <filename> "<fileUrl>"` (add `-H "Authorization: Bearer <BWL_ACCESS_KEY>"` when bwl has an access key). ' +
+      '`curl -fsSL -o <filename> "<fileUrl>"` (add `-H "Authorization: Bearer <HWL_ACCESS_KEY>"` when hwl has an access key). ' +
       'With downloadId: returns that file inline -- images as an image, small text files as text, anything else as a binary resource (up to 10 MB). ' +
       'Each tab keeps its 20 most recent downloads.',
     inputSchema: {
@@ -557,7 +557,7 @@ function without(args, dropKey = 'tabId') {
 }
 
 /**
- * Build a REST request spec for a tool. Pure / synchronous — except cookie
+ * Build a REST request spec for a tool. Pure / synchronous: except cookie
  * import, which needs async file parsing; use buildCookieRequest() for that.
  *
  * @param {string} name - Tool name.
@@ -570,7 +570,7 @@ export function buildRequest(name, args, ctx) {
   const userId = ctx.userId;
   const sessionKey = ctx.sessionKey;
   switch (name) {
-    case 'bwl_create_tab':
+    case 'hwl_create_tab':
       return {
         method: 'POST',
         path: '/tabs',
@@ -578,7 +578,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { url: args.url === 'about:blank' ? undefined : args.url, userId, sessionKey, ...(args.profile ? { profile: args.profile } : {}) },
       };
-    case 'bwl_create_profile':
+    case 'hwl_create_profile':
       return {
         method: 'POST',
         path: '/profiles',
@@ -590,11 +590,11 @@ export function buildRequest(name, args, ctx) {
           ...Object.fromEntries(['screen', 'os', 'locale', 'timezone', 'settings'].filter(key => args[key]).map(key => [key, args[key]])),
         },
       };
-    case 'bwl_list_profiles':
+    case 'hwl_list_profiles':
       return { method: 'GET', path: '/profiles', auth: 'accessKey', responseKind: 'json' };
-    case 'bwl_delete_profile':
+    case 'hwl_delete_profile':
       return { method: 'DELETE', path: `/profiles/${encodeURIComponent(args.profile)}`, auth: 'accessKey', responseKind: 'json' };
-    case 'bwl_snapshot': {
+    case 'hwl_snapshot': {
       const params = new URLSearchParams({ userId, includeScreenshot: args.includeScreenshot === false ? 'false' : 'true' });
       if (args.offset != null && args.offset !== '') params.set('offset', String(args.offset));
       return {
@@ -604,7 +604,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'snapshot',
       };
     }
-    case 'bwl_read_text': {
+    case 'hwl_read_text': {
       const params = new URLSearchParams({ userId });
       if (args.selector) params.set('selector', args.selector);
       if (args.offset != null && args.offset !== '') params.set('offset', String(args.offset));
@@ -616,15 +616,15 @@ export function buildRequest(name, args, ctx) {
         meta: { pageContent: true },
       };
     }
-    case 'bwl_wait_for_reply':
+    case 'hwl_wait_for_reply':
       return { method: 'POST', path: `/tabs/${args.tabId}/wait-reply`, auth: 'accessKey', responseKind: 'json', body: { ...without(args), userId }, meta: { pageContent: true } };
-    case 'bwl_keep_open':
+    case 'hwl_keep_open':
       return { method: 'POST', path: `/tabs/${args.tabId}/lifetime`, auth: 'accessKey', responseKind: 'json', body: { userId, keepOpen: args.keepOpen ?? true } };
-    case 'bwl_save_page':
+    case 'hwl_save_page':
       return { method: 'POST', path: `/tabs/${args.tabId}/save-page`, auth: 'accessKey', responseKind: 'json', body: { userId } };
-    case 'bwl_upload':
+    case 'hwl_upload':
       return { method: 'POST', path: `/tabs/${args.tabId}/upload`, auth: 'accessKey', responseKind: 'json', body: { ...without(args), userId } };
-    case 'bwl_downloads': {
+    case 'hwl_downloads': {
       const params = new URLSearchParams({ userId });
       if (args.downloadId) {
         params.set('downloadId', String(args.downloadId));
@@ -636,13 +636,13 @@ export function buildRequest(name, args, ctx) {
         path: `/tabs/${args.tabId}/downloads?${params}`,
         auth: 'accessKey',
         responseKind: 'downloads',
-        // fileUrls point at whatever origin the agent reached bwl through.
+        // fileUrls point at whatever origin the agent reached hwl through.
         meta: { tabId: String(args.tabId), userId, fileBase: ctx.publicBaseUrl || null },
       };
     }
-    case 'bwl_tab_history':
+    case 'hwl_tab_history':
       return { method: 'GET', path: `/tabs/${args.tabId}/history?${new URLSearchParams({ userId })}`, auth: 'accessKey', responseKind: 'json', meta: { pageContent: true } };
-    case 'bwl_click':
+    case 'hwl_click':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/click`,
@@ -650,7 +650,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_wait':
+    case 'hwl_wait':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/wait`,
@@ -658,7 +658,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_mouse':
+    case 'hwl_mouse':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/mouse`,
@@ -666,7 +666,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_type':
+    case 'hwl_type':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/type`,
@@ -674,7 +674,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_select':
+    case 'hwl_select':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/select`,
@@ -682,7 +682,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_navigate':
+    case 'hwl_navigate':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/navigate`,
@@ -690,7 +690,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_scroll':
+    case 'hwl_scroll':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/scroll`,
@@ -698,21 +698,21 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_screenshot':
+    case 'hwl_screenshot':
       return {
         method: 'GET',
         path: `/tabs/${args.tabId}/screenshot?${new URLSearchParams({ userId })}`,
         auth: 'accessKey',
         responseKind: 'image',
       };
-    case 'bwl_close_tab':
+    case 'hwl_close_tab':
       return {
         method: 'DELETE',
         path: `/tabs/${args.tabId}?${new URLSearchParams({ userId })}`,
         auth: 'accessKey',
         responseKind: 'json',
       };
-    case 'bwl_evaluate':
+    case 'hwl_evaluate':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/evaluate`,
@@ -721,17 +721,17 @@ export function buildRequest(name, args, ctx) {
         body: { userId, expression: args.expression },
         meta: { pageContent: true },
       };
-    case 'bwl_list_tabs':
+    case 'hwl_list_tabs':
       return {
         method: 'GET',
         path: `/tabs?${new URLSearchParams({ userId })}`,
         auth: 'accessKey',
         responseKind: 'json',
       };
-    case 'bwl_import_cookies':
-      // Async (Netscape parse + path check) — caller must use buildCookieRequest().
-      throw new Error('bwl_import_cookies requires buildCookieRequest() (async cookie parsing)');
-    case 'bwl_batch':
+    case 'hwl_import_cookies':
+      // Async (Netscape parse + path check), caller must use buildCookieRequest().
+      throw new Error('hwl_import_cookies requires buildCookieRequest() (async cookie parsing)');
+    case 'hwl_batch':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/batch`,
@@ -739,7 +739,7 @@ export function buildRequest(name, args, ctx) {
         responseKind: 'json',
         body: { ...without(args), userId },
       };
-    case 'bwl_element_state':
+    case 'hwl_element_state':
       return {
         method: 'POST',
         path: `/tabs/${args.tabId}/state`,
@@ -762,12 +762,12 @@ export function buildRequest(name, args, ctx) {
  * @param {CallContext} ctx
  * @param {{apiKey: string, cookiesDir: string}} config - server config (apiKey + cookiesDir).
  * @returns {Promise<RequestSpec & {meta: {imported: number, userId: string}}>}
- * @throws {Error} if BWL_API_KEY is unset.
+ * @throws {Error} if HWL_API_KEY is unset.
  */
 export async function buildCookieRequest(args, ctx, config) {
   if (!config.apiKey) {
     throw new Error(
-      'BWL_API_KEY is not set. Cookie import is disabled unless both the server and the host (MCP/OpenClaw) have BWL_API_KEY.'
+      'HWL_API_KEY is not set. Cookie import is disabled unless both the server and the host (MCP/OpenClaw) have HWL_API_KEY.'
     );
   }
   const cookies = await readCookieFile({
@@ -793,7 +793,7 @@ export async function buildCookieRequest(args, ctx, config) {
  */
 export function authHeaders(spec, config) {
   if (spec.auth === 'accessKey') {
-    if (!config.accessKey) return {}; // server not gated — no header needed
+    if (!config.accessKey) return {}; // server not gated, no header needed
     return { Authorization: `Bearer ${config.accessKey}` };
   }
   if (spec.auth === 'apiKey') {
@@ -829,12 +829,12 @@ export async function fetchSpec(baseUrl, spec, config) {
     const text = await res.text();
     throw new Error(`${res.status}: ${text}`);
   }
-  // Server-reported handling time (X-Bwl-Server-Ms), so agents can tell a slow
+  // Server-reported handling time (X-Hwl-Server-Ms), so agents can tell a slow
   // tool call apart from a slow network/container hop instead of guessing.
-  const serverMs = res.headers.get('x-bwl-server-ms');
+  const serverMs = res.headers.get('x-hwl-server-ms');
   if (spec.responseKind === 'image') {
     const contentType = res.headers.get('content-type') || '';
-    // Guard: server may return JSON/text (e.g. error with 200) — don't base64 it.
+    // Guard: server may return JSON/text (e.g. error with 200), don't base64 it.
     if (!contentType.startsWith('image/')) {
       const text = await res.text();
       throw new Error(`Screenshot failed: ${text}`);
@@ -864,7 +864,7 @@ export async function fetchSpec(baseUrl, spec, config) {
  */
 export async function runTool(name, args, ctx, baseUrl, config) {
   const spec =
-    name === 'bwl_import_cookies'
+    name === 'hwl_import_cookies'
       ? await buildCookieRequest(args, ctx, config)
       : buildRequest(name, args, ctx);
   if (spec.meta && 'fileBase' in spec.meta && !spec.meta.fileBase) spec.meta.fileBase = baseUrl;
@@ -905,7 +905,7 @@ function downloadFileUrl(base, meta, id) {
   return `${base}/tabs/${encodeURIComponent(meta.tabId)}/downloads/${encodeURIComponent(id)}/file?${new URLSearchParams({ userId: meta.userId })}`;
 }
 
-/** bwl_downloads: a list with fileUrls, or one file's content as the best-fitting MCP block. */
+/** hwl_downloads: a list with fileUrls, or one file's content as the best-fitting MCP block. */
 function adaptDownloads(spec, payload) {
   const meta = spec.meta || {};
   const base = String(meta.fileBase || '').replace(/\/+$/, '');
@@ -924,7 +924,7 @@ function adaptDownloads(spec, payload) {
   if (!spec.path.includes('downloadId=')) {
     const text = downloads.length
       ? JSON.stringify({ downloads: describe(downloads) }, null, 2)
-      : 'No downloads in this tab yet. Click a download link or button first, then call bwl_downloads again.';
+      : 'No downloads in this tab yet. Click a download link or button first, then call hwl_downloads again.';
     return [{ type: 'text', text }];
   }
   const [file] = downloads;

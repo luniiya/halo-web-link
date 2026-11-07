@@ -65,13 +65,13 @@ describe('NATIVE_MEM_RESTART_THRESHOLD_MB config parsing', () => {
 
   test('falls back to 300 on zero (0 is falsy)', () => {
     // parseInt('0') === 0 which is falsy, so || 300 kicks in.
-    // This is expected behavior — 0 threshold makes no sense.
+    // This is expected behavior, 0 threshold makes no sense.
     expect(parseThreshold('0')).toBe(300);
   });
 
   test('reads negative value (parseInt parses it)', () => {
     // parseInt('-100') === -100 which is truthy
-    // Negative threshold means restart immediately — not useful but not broken.
+    // Negative threshold means restart immediately, not useful but not broken.
     expect(parseThreshold('-100')).toBe(-100);
   });
 });
@@ -176,7 +176,7 @@ describe('baseline lifecycle', () => {
     evaluateMemoryPressure(state, 250, 100, 200);
     expect(state.baseline).toBe(150);
 
-    // Second check with different values — baseline should NOT change
+    // Second check with different values, baseline should NOT change
     evaluateMemoryPressure(state, 300, 100, 200);
     expect(state.baseline).toBe(150); // unchanged
   });
@@ -198,7 +198,7 @@ describe('baseline lifecycle', () => {
     state.baseline = null;
     state.browserAlive = false;
 
-    // 5. No browser — skip
+    // 5. No browser, skip
     expect(evaluateMemoryPressure(state, 200, 80, 200)).toBe('skip');
 
     // 6. New browser launched on next request

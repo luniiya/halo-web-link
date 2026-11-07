@@ -1,5 +1,5 @@
 /**
- * Cookie file reading and parsing for bloom-web-link.
+ * Cookie file reading and parsing for halo-web-link.
  */
 
 import fs from 'fs/promises';

@@ -16,7 +16,7 @@ const fingerprint = () => ({ navigator: { userAgent: `UA-${Math.random()}` }, sc
 const registry = () => createProfileRegistry({ file: path.join(folder, 'profiles.json'), generateFingerprint: fingerprint, now: () => clock });
 
 beforeEach(() => {
-  folder = fs.mkdtempSync(path.join(os.tmpdir(), 'bwl-profiles-'));
+  folder = fs.mkdtempSync(path.join(os.tmpdir(), 'hwl-profiles-'));
   clock = 1_000_000;
 });
 afterEach(() => fs.rmSync(folder, { recursive: true, force: true }));

@@ -3,14 +3,14 @@
 let accessKey: string | null = null;
 
 export function getAccessKey(): string {
-  if (accessKey === null) accessKey = localStorage.getItem("bwl-access-key") || "";
+  if (accessKey === null) accessKey = localStorage.getItem("hwl-access-key") || "";
   return accessKey;
 }
 
 export function setAccessKey(next: string) {
   accessKey = next.trim();
-  if (accessKey) localStorage.setItem("bwl-access-key", accessKey);
-  else localStorage.removeItem("bwl-access-key");
+  if (accessKey) localStorage.setItem("hwl-access-key", accessKey);
+  else localStorage.removeItem("hwl-access-key");
 }
 
 export function authHeaders(json = false): HeadersInit {

@@ -28,11 +28,11 @@ describe('OpenClaw plugin registration', () => {
       },
     });
 
-    expect(gatewayMethods.get('bwl.health').options).toEqual({ scope: 'operator.admin' });
-    expect(gatewayMethods.get('bwl.status').options).toEqual({ scope: 'operator.admin' });
+    expect(gatewayMethods.get('hwl.health').options).toEqual({ scope: 'operator.admin' });
+    expect(gatewayMethods.get('hwl.status').options).toEqual({ scope: 'operator.admin' });
 
     const respond = jest.fn();
-    await gatewayMethods.get('bwl.health').handler({ params: {}, respond });
+    await gatewayMethods.get('hwl.health').handler({ params: {}, respond });
 
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:9377/health', expect.any(Object));
     expect(respond).toHaveBeenCalledWith(true, {

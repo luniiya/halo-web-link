@@ -8,34 +8,34 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '..', '..');
-const SERVER = process.env.BWL_MCP_SERVER || resolve(ROOT, 'mcp', 'server.mjs');
+const SERVER = process.env.HWL_MCP_SERVER || resolve(ROOT, 'mcp', 'server.mjs');
 const EXPECTED_TOOLS = [
-  'bwl_create_tab',
-  'bwl_snapshot',
-  'bwl_click',
-  'bwl_wait',
-  'bwl_mouse',
-  'bwl_type',
-  'bwl_navigate',
-  'bwl_scroll',
-  'bwl_screenshot',
-  'bwl_close_tab',
-  'bwl_evaluate',
-  'bwl_list_tabs',
-  'bwl_import_cookies',
-  'bwl_read_text',
-  'bwl_select',
-  'bwl_element_state',
-  'bwl_upload',
-  'bwl_batch',
-  'bwl_wait_for_reply',
-  'bwl_keep_open',
-  'bwl_tab_history',
-  'bwl_create_profile',
-  'bwl_list_profiles',
-  'bwl_delete_profile',
-  'bwl_downloads',
-  'bwl_save_page',
+  'hwl_create_tab',
+  'hwl_snapshot',
+  'hwl_click',
+  'hwl_wait',
+  'hwl_mouse',
+  'hwl_type',
+  'hwl_navigate',
+  'hwl_scroll',
+  'hwl_screenshot',
+  'hwl_close_tab',
+  'hwl_evaluate',
+  'hwl_list_tabs',
+  'hwl_import_cookies',
+  'hwl_read_text',
+  'hwl_select',
+  'hwl_element_state',
+  'hwl_upload',
+  'hwl_batch',
+  'hwl_wait_for_reply',
+  'hwl_keep_open',
+  'hwl_tab_history',
+  'hwl_create_profile',
+  'hwl_list_profiles',
+  'hwl_delete_profile',
+  'hwl_downloads',
+  'hwl_save_page',
 ];
 
 let failures = 0;
@@ -49,7 +49,7 @@ function check(name, condition, detail = '') {
 
 async function main() {
   console.log('mcp/server.mjs smoke test');
-  const client = new Client({ name: 'bwl-smoke-test', version: '1.0.0' });
+  const client = new Client({ name: 'hwl-smoke-test', version: '1.0.0' });
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [SERVER],
@@ -59,7 +59,7 @@ async function main() {
       HOME: process.env.HOME || '',
       USER: process.env.USER || '',
       NODE_OPTIONS: process.env.NODE_OPTIONS || '',
-      BWL_BASE_URL: 'http://localhost:1',
+      HWL_BASE_URL: 'http://localhost:1',
     },
     stderr: 'pipe',
   });
@@ -69,7 +69,7 @@ async function main() {
 
   try {
     await client.connect(transport);
-    check('handshake returns server name', client.getServerVersion()?.name === 'bloom-web-link');
+    check('handshake returns server name', client.getServerVersion()?.name === 'halo-web-link');
 
     const { tools } = await client.listTools();
     const names = tools.map(tool => tool.name).sort();
@@ -81,7 +81,7 @@ async function main() {
       check(`"${tool.name}" has inputSchema.object`, tool.inputSchema?.type === 'object' && tool.inputSchema.properties !== undefined);
     }
 
-    const navigate = tools.find(tool => tool.name === 'bwl_navigate');
+    const navigate = tools.find(tool => tool.name === 'hwl_navigate');
     const macros = navigate.inputSchema.properties.macro.enum;
     check('navigate exposes google + reddit macros', macros.includes('@google_search') && macros.includes('@reddit_search'));
     check('navigate has >=13 macros', macros.length >= 13, `got ${macros.length}`);

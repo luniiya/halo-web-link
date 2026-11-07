@@ -82,7 +82,7 @@ describe('per-user navigation health tracking', () => {
     expect(tracker.getFailures('userA')).toBe(2);
     expect(tracker.getFailures('userB')).toBe(0);
 
-    // User B fails once — should not affect user A
+    // User B fails once, should not affect user A
     tracker.recordNavFailure('userB');
     expect(tracker.getFailures('userA')).toBe(2);
     expect(tracker.getFailures('userB')).toBe(1);
@@ -96,7 +96,7 @@ describe('per-user navigation health tracking', () => {
     tracker.recordNavFailure('userB');
     tracker.recordNavFailure('userB');
 
-    // User A succeeds — only user A resets
+    // User A succeeds, only user A resets
     tracker.recordNavSuccess('userA');
     expect(tracker.getFailures('userA')).toBe(0);
     expect(tracker.getFailures('userB')).toBe(2);

@@ -8,7 +8,7 @@ describe("buildAgentPrompt", () => {
 
   test("names the agent's dedicated profile and how to use it", () => {
     expect(prompt).toContain("Your dedicated browser profile is `shopping`");
-    expect(prompt).toContain('bwl_create_tab({ url, profile: "shopping" })');
+    expect(prompt).toContain('hwl_create_tab({ url, profile: "shopping" })');
   });
 
   test("lists the other profiles as usable with a reason, not forbidden", () => {
@@ -18,7 +18,7 @@ describe("buildAgentPrompt", () => {
 
   test("includes the endpoint and setup commands", () => {
     expect(prompt).toContain("MCP endpoint (Streamable HTTP): http://localhost:9377/mcp");
-    expect(prompt).toContain("claude mcp add --transport http bloom-web-link http://localhost:9377/mcp\`");
+    expect(prompt).toContain("claude mcp add --transport http halo-web-link http://localhost:9377/mcp\`");
     expect(prompt).toContain('"url": "http://localhost:9377/mcp" }');
   });
 
@@ -27,15 +27,15 @@ describe("buildAgentPrompt", () => {
   });
 
   test("covers saving pages and pulling downloaded files", () => {
-    expect(prompt).toContain("bwl_save_page({ tabId })");
-    expect(prompt).toContain("bwl_downloads({ tabId, downloadId })");
+    expect(prompt).toContain("hwl_save_page({ tabId })");
+    expect(prompt).toContain("hwl_downloads({ tabId, downloadId })");
   });
 
   test("auth adds a placeholder header, never a real key", () => {
     const secured = buildAgentPrompt({ ...base, authRequired: true });
-    expect(secured).toContain('--header "Authorization: Bearer <BWL_ACCESS_KEY>"');
-    expect(secured).toContain('"headers": { "Authorization": "Bearer <BWL_ACCESS_KEY>" }');
-    expect(prompt).not.toContain("BWL_ACCESS_KEY");
+    expect(secured).toContain('--header "Authorization: Bearer <HWL_ACCESS_KEY>"');
+    expect(secured).toContain('"headers": { "Authorization": "Bearer <HWL_ACCESS_KEY>" }');
+    expect(prompt).not.toContain("HWL_ACCESS_KEY");
   });
 });
 

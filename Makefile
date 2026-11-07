@@ -14,7 +14,7 @@ else
   CAMOUFOX_ARCH := x86_64
 endif
 
-IMAGE := bloom-web-link:$(VERSION)-$(ARCH)
+IMAGE := halo-web-link:$(VERSION)-$(ARCH)
 
 .PHONY: build build-arm64 build-x86 up down reset
 
@@ -36,17 +36,17 @@ up:
 	@if ! docker image inspect $(IMAGE) > /dev/null 2>&1; then \
 	  $(MAKE) build; \
 	fi
-	docker run -d --restart unless-stopped --name bloom-web-link --shm-size=2g \
+	docker run -d --restart unless-stopped --name halo-web-link --shm-size=2g \
 	  -p 127.0.0.1:9377:9377 -p 127.0.0.1:6080:6080 \
-	  -e BWL_ACCESS_KEY -e BWL_API_KEY -e BWL_ADMIN_KEY \
-	  -v bwl-data:/root/.bwl \
+	  -e HWL_ACCESS_KEY -e HWL_API_KEY -e HWL_ADMIN_KEY \
+	  -v hwl-data:/root/.hwl \
 	  $(IMAGE)
 
 down:
-	docker stop bloom-web-link && docker rm bloom-web-link
+	docker stop halo-web-link && docker rm halo-web-link
 
 reset:
-	-docker stop bloom-web-link 2>/dev/null
-	-docker rm bloom-web-link 2>/dev/null
+	-docker stop halo-web-link 2>/dev/null
+	-docker rm halo-web-link 2>/dev/null
 	-docker rmi $(IMAGE) 2>/dev/null
 	$(MAKE) build

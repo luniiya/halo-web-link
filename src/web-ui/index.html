@@ -3,7 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bloom Web Link Control Room</title>
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Before first paint so dark mode and the chosen colors never flash; theme.ts takes over after.
+      (function () {
+        try {
+          var root = document.documentElement;
+          var theme = localStorage.getItem("hwl-theme");
+          var dark = theme ? theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) {
+            root.classList.add("dark");
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#131f24");
+          }
+          var hex = /^#[0-9a-f]{6}$/i;
+          var accent = localStorage.getItem("hwl-accent");
+          var secondary = localStorage.getItem("hwl-secondary");
+          if (hex.test(accent)) root.style.setProperty("--accent", accent);
+          if (hex.test(secondary)) root.style.setProperty("--secondary", secondary);
+          if (localStorage.getItem("hwl-sidebar-collapsed") === "1") root.classList.add("sidebar-collapsed");
+        } catch (e) {}
+      })();
+    </script>
+    <title>Halo Web Link</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='36' r='24' fill='%231cb0f6'/%3E%3Cpath d='M8 36h48M32 12c-8 7-8 41 0 48M32 12c8 7 8 41 0 48' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Cellipse cx='32' cy='9' rx='18' ry='6' fill='none' stroke='%23ffc800' stroke-width='5'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900;1000&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// MCP tool-call helper — invoke one tool (e.g. create_tab/snapshot) and print
+// MCP tool-call helper, invoke one tool (e.g. create_tab/snapshot) and print
 // the result as JSON.
 // Usage: node scripts/mcp-call.mjs <tool_name> '<json-args>'
 import { spawn } from "node:child_process";
@@ -25,7 +25,7 @@ const proc = spawn(process.execPath, [SERVER], {
   env: {
     PATH: process.env.PATH, HOME: process.env.HOME, USER: process.env.USER,
     NODE_OPTIONS: process.env.NODE_OPTIONS || "",
-    BWL_BASE_URL: process.env.BWL_BASE_URL || "http://localhost:9377",
+    HWL_BASE_URL: process.env.HWL_BASE_URL || "http://localhost:9377",
   },
   stdio: ["pipe", "pipe", "pipe"],
 });

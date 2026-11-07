@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "bloom-web-link",
+    "title": "halo-web-link",
     "version": "2.0.0",
     "description": "Anti-detection browser automation server for AI agents. Accessibility snapshots, element refs, session isolation, cookie import, proxy rotation, and structured logs.",
     "license": {
@@ -10,7 +10,7 @@
     },
     "contact": {
       "name": "Luniiya",
-      "url": "https://github.com/luniiya/bloom-web-link"
+      "url": "https://github.com/luniiya/halo-web-link"
     }
   },
   "servers": [
@@ -62,12 +62,12 @@
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Bearer token matching BWL_API_KEY (per-route auth for sensitive endpoints like cookie import and traces)."
+        "description": "Bearer token matching HWL_API_KEY (per-route auth for sensitive endpoints like cookie import and traces)."
       },
       "AccessKeyAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Bearer token matching BWL_ACCESS_KEY. When set, gates all routes except /health, cookie import, and /stop. Acts as a superkey -- also accepted by endpoints that normally require BWL_API_KEY."
+        "description": "Bearer token matching HWL_ACCESS_KEY. When set, gates all routes except /health, cookie import, and /stop. Acts as a superkey -- also accepted by endpoints that normally require HWL_API_KEY."
       }
     },
     "schemas": {
@@ -1403,7 +1403,7 @@
           "Interaction"
         ],
         "summary": "Run multiple actions in one round trip",
-        "description": "Executes a sequence of click/type/wait/scroll/navigate/read_text actions against one tab in a\nsingle request, so a multi-step interaction (e.g. click a field, type into it, wait for a\nresult) costs one round trip instead of one per action. Stops at the first failing action\nunless continueOnError is true. Refs are refreshed after each click, type, and navigation,\npreserving DOM identity across dynamic reordering before the next action runs.\nThis is a simplified/faster path: it does not include the Google-SERP-specific handling that\nthe individual bwl_click/bwl_navigate tools have, so prefer those for search result pages.\n",
+        "description": "Executes a sequence of click/type/wait/scroll/navigate/read_text actions against one tab in a\nsingle request, so a multi-step interaction (e.g. click a field, type into it, wait for a\nresult) costs one round trip instead of one per action. Stops at the first failing action\nunless continueOnError is true. Refs are refreshed after each click, type, and navigation,\npreserving DOM identity across dynamic reordering before the next action runs.\nThis is a simplified/faster path: it does not include the Google-SERP-specific handling that\nthe individual hwl_click/hwl_navigate tools have, so prefer those for search result pages.\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1599,7 +1599,7 @@
           "Interaction"
         ],
         "summary": "Attach a file to an upload control",
-        "description": "Attaches a file without going through the native OS file dialog. The file comes from exactly one source: `path` (inside BWL_UPLOADS_DIR, default ~/.bwl/uploads), `url` (fetched by the server, so the agent never has to inline large files), or `base64` + `filename`. `url` and `base64` files stay in memory and are capped at 25 MB. Strategies, in order: (0) when a ref/selector is given, use the file input it is, labels, contains, or shares a drop zone/section with; (1) if the page has a single <input type=\"file\"> (or no trigger was given), set files on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger via keyboard (focus + Enter) then a forced click, and answer the chooser or a freshly mounted panel input; (3) as a last resort, drop the file on the trigger with a synthetic drag-and-drop. `mode: \"drop\"` skips straight to (3).\n",
+        "description": "Attaches a file without going through the native OS file dialog. The file comes from exactly one source: `path` (inside HWL_UPLOADS_DIR, default ~/.hwl/uploads), `url` (fetched by the server, so the agent never has to inline large files), or `base64` + `filename`. `url` and `base64` files stay in memory and are capped at 25 MB. Strategies, in order: (0) when a ref/selector is given, use the file input it is, labels, contains, or shares a drop zone/section with; (1) if the page has a single <input type=\"file\"> (or no trigger was given), set files on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger via keyboard (focus + Enter) then a forced click, and answer the chooser or a freshly mounted panel input; (3) as a last resort, drop the file on the trigger with a synthetic drag-and-drop. `mode: \"drop\"` skips straight to (3).\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1653,7 +1653,7 @@
                     "description": "drop dispatches a synthetic drag-and-drop on the ref/selector instead of using a file input."
                   },
                   "path": {
-                    "description": "Absolute path, or array of paths, that resolves within BWL_UPLOADS_DIR.",
+                    "description": "Absolute path, or array of paths, that resolves within HWL_UPLOADS_DIR.",
                     "oneOf": [
                       {
                         "type": "string"
@@ -2024,7 +2024,7 @@
           "Interaction"
         ],
         "summary": "Set the page viewport size",
-        "description": "Physically resizes the page via Playwright's `page.setViewportSize`, triggering a real layout reflow. Use for responsive testing — `window.resizeTo()` is a no-op on non-popup windows.\n",
+        "description": "Physically resizes the page via Playwright's `page.setViewportSize`, triggering a real layout reflow. Use for responsive testing: `window.resizeTo()` is a no-op on non-popup windows.\n",
         "parameters": [
           {
             "name": "tabId",
@@ -3534,11 +3534,11 @@
                   },
                   "locale": {
                     "type": "string",
-                    "description": "Browser locale such as fr-FR (default: follows the proxy or BWL_LOCALE)"
+                    "description": "Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)"
                   },
                   "timezone": {
                     "type": "string",
-                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or BWL_TIMEZONE)"
+                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)"
                   },
                   "settings": {
                     "$ref": "#/components/schemas/ProfileSettings"
@@ -3607,11 +3607,11 @@
                   },
                   "locale": {
                     "type": "string",
-                    "description": "Browser locale such as fr-FR (default: follows the proxy or BWL_LOCALE)"
+                    "description": "Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)"
                   },
                   "timezone": {
                     "type": "string",
-                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or BWL_TIMEZONE)"
+                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)"
                   }
                 }
               }

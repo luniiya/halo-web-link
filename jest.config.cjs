@@ -1,5 +1,5 @@
 module.exports = {
-  // Disable transforms — we use native ESM via --experimental-vm-modules
+  // Disable transforms, we use native ESM via --experimental-vm-modules
   transform: {},
   testEnvironment: 'node',
   testTimeout: 60000, // 60 seconds per test
@@ -26,7 +26,7 @@ module.exports = {
   // Verbose output
   verbose: true,
   
-  // Don't bail — run full suite even if a test fails
+  // Don't bail, run full suite even if a test fails
   bail: 0,
   
   // Coverage settings (optional)

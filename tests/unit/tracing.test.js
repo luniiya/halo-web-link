@@ -14,7 +14,7 @@ import {
 } from '../../lib/tracing.js';
 
 function makeTempBase() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'bwl-traces-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'hwl-traces-test-'));
 }
 
 describe('tracing', () => {

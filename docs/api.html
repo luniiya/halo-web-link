@@ -12,7 +12,7 @@
 {
   "specUrl": "./openapi.json",
   "logoUrl": "./fox.png",
-  "title": "bloom-web-link",
+  "title": "halo-web-link",
   "subtitle": "API Reference",
   "accent": "#9B30FF",
   "accentLight": "#B366FF",
@@ -21,7 +21,7 @@
 </script>
 <style>
 /* ========================================================
-   Design tokens — dark (default)
+   Design tokens, dark (default)
    ======================================================== */
 :root, [data-theme="dark"] {
   --accent: #9B30FF;
@@ -211,7 +211,7 @@ body {
 }
 
 /* ========================================================
-   Main content — two-panel (Stripe layout)
+   Main content, two-panel (Stripe layout)
    ======================================================== */
 .main {
   margin-left: var(--sidebar-width);
@@ -224,14 +224,14 @@ body {
 }
 .endpoint:last-child { min-height: auto; }
 
-/* Left panel — description */
+/* Left panel, description */
 .endpoint .desc-panel {
   flex: 1; min-width: 0;
   padding: 40px 48px;
   max-width: calc(100% - var(--code-panel-width));
 }
 
-/* Right panel — code examples */
+/* Right panel, code examples */
 .endpoint .code-panel {
   width: var(--code-panel-width); flex-shrink: 0;
   background: var(--bg-code);
@@ -435,7 +435,7 @@ body {
 }
 
 /* ========================================================
-   Responsive — tablet (< 1024px): stack code below
+   Responsive, tablet (< 1024px): stack code below
    ======================================================== */
 @media (max-width: 1024px) {
   :root { --code-panel-width: 0%; }
@@ -453,7 +453,7 @@ body {
 }
 
 /* ========================================================
-   Responsive — mobile (< 768px): collapsible sidebar
+   Responsive, mobile (< 768px): collapsible sidebar
    ======================================================== */
 @media (max-width: 768px) {
   :root { --sidebar-width: 280px; }
@@ -523,7 +523,7 @@ const conf = {
   },
 };
 
-// Apply theme overrides (only in dark mode — light mode uses its own)
+// Apply theme overrides (only in dark mode, light mode uses its own)
 for (const [prop, val] of Object.entries(conf.theme)) {
   if (val) document.documentElement.style.setProperty(prop, val);
 }
@@ -587,7 +587,7 @@ function renderSchemaProps(schema, depth = 0) {
       <span class="prop-name">${esc(name)}</span>
       <span class="prop-type">${esc(type)}${prop.enum ? ' enum' : ''}</span>
       ${required.has(name) ? '<span class="prop-required">required</span>' : ''}
-      ${prop.description ? `<span class="prop-desc">— ${esc(prop.description)}</span>` : ''}
+      ${prop.description ? `<span class="prop-desc">, ${esc(prop.description)}</span>` : ''}
     </div>`;
     if (prop.properties) html += renderSchemaProps(prop, depth + 1);
     if (prop.items?.properties) html += renderSchemaProps(prop.items, depth + 1);
@@ -657,7 +657,7 @@ async function render() {
   const spec = await res.json();
 
   const title = conf.title || spec.info?.title || 'API';
-  document.title = `${title} — ${conf.subtitle}`;
+  document.title = `${title}, ${conf.subtitle}`;
   document.getElementById('page-title').textContent = document.title;
 
   // Header
@@ -762,7 +762,7 @@ async function render() {
             <div class="param-name">${esc(p.name)}${p.required ? '<span class="required">required</span>' : ''}
               <span class="in-badge">${esc(p.in)}</span></div>
             <div class="param-desc">
-              <div class="param-type">${esc(p.schema?.type || 'string')}${p.schema?.enum ? ` — ${p.schema.enum.join(', ')}` : ''}</div>
+              <div class="param-type">${esc(p.schema?.type || 'string')}${p.schema?.enum ? `, ${p.schema.enum.join(', ')}` : ''}</div>
               ${p.description ? esc(p.description) : ''}</div>
           </div>`;
         }

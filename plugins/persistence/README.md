@@ -1,12 +1,12 @@
 # persistence
 
-Optional per-user browser storage state persistence for bloom-web-link.
+Optional per-user browser storage state persistence for halo-web-link.
 
 Saves and restores cookies and localStorage across session restarts, container deploys, and idle timeouts using Playwright's `storageState` API. IndexedDB persistence is available as an opt-in.
 
 ## Configuration
 
-In `bwl.config.json`:
+In `hwl.config.json`:
 
 ```json
 {
@@ -23,15 +23,15 @@ In `bwl.config.json`:
 The profile directory can also be set via environment variable:
 
 ```
-BWL_PROFILE_DIR=/data/profiles
+HWL_PROFILE_DIR=/data/profiles
 ```
 
-- `indexedDB` (default: `false`) — set to `true` to capture IndexedDB through `storageState()`. This can preserve logins stored there, including Firebase Auth and other SSO flows. It captures all serializable IndexedDB records—not only authentication data—and may make snapshots significantly larger and checkpoints slower.
+- `indexedDB` (default: `false`): set to `true` to capture IndexedDB through `storageState()`. This can preserve logins stored there, including Firebase Auth and other SSO flows. It captures all serializable IndexedDB records, not only authentication data, and may make snapshots significantly larger and checkpoints slower.
 
 ## How it works
 
 - **Session create**: If a persisted `storageState` exists for the `userId`, it's restored into the new Playwright context.
-- **First run**: If no persisted state exists, bootstrap cookies from `BWL_COOKIES_DIR/cookies.txt` are imported (if present).
+- **First run**: If no persisted state exists, bootstrap cookies from `HWL_COOKIES_DIR/cookies.txt` are imported (if present).
 - **Cookie import / session close / shutdown**: Storage state is checkpointed to disk via atomic tmp-write + rename.
 - **Session reset**: `DELETE /sessions/:userId/storage_state` closes the live context without checkpointing it, waits for in-flight writes, and deletes persisted state so the next session starts fresh.
 - **User isolation**: Each `userId` maps to a deterministic SHA256-hashed subdirectory under `profileDir`, so arbitrary userIds are path-safe.
@@ -44,7 +44,7 @@ When running with Docker, mount the profile directory as a volume:
 docker run -d \
   -p 9377:9377 \
   -v /host/profiles:/data/profiles \
-  bloom-web-link
+  halo-web-link
 ```
 
 ## Credits

@@ -1,6 +1,6 @@
 {
-  "id": "bloom-web-link",
-  "name": "Bloom Web Link",
+  "id": "halo-web-link",
+  "name": "Halo Web Link",
   "description": "Anti-detection browser automation for AI agents using Camoufox (Firefox-based)",
   "version": "2.0.0",
   "configSchema": {
@@ -17,7 +17,7 @@
       },
       "autoStart": {
         "type": "boolean",
-        "description": "Auto-start the bloom-web-link server with the Gateway",
+        "description": "Auto-start the halo-web-link server with the Gateway",
         "default": true
       },
       "maxSessions": {
@@ -47,11 +47,11 @@
       },
       "apiKey": {
         "type": "string",
-        "description": "Secret key for cookie import endpoint. Cookie import is disabled if unset. Set via BWL_API_KEY env var."
+        "description": "Secret key for cookie import endpoint. Cookie import is disabled if unset. Set via HWL_API_KEY env var."
       },
       "accessKey": {
         "type": "string",
-        "description": "If set, all routes (except /health) require Authorization: Bearer <key>. Set via BWL_ACCESS_KEY env var."
+        "description": "If set, all routes (except /health) require Authorization: Bearer <key>. Set via HWL_ACCESS_KEY env var."
       }
     },
     "additionalProperties": false
@@ -89,42 +89,42 @@
       "placeholder": "128"
     },
     "apiKey": {
-      "label": "Cookie Import API Key (BWL_API_KEY)",
+      "label": "Cookie Import API Key (HWL_API_KEY)",
       "placeholder": "Leave empty to disable cookie import"
     },
     "accessKey": {
-      "label": "Global Access Key (BWL_ACCESS_KEY)",
+      "label": "Global Access Key (HWL_ACCESS_KEY)",
       "placeholder": "Leave empty for localhost-only access"
     }
   },
   "contracts": {
     "tools": [
-      "bwl_create_tab",
-      "bwl_snapshot",
-      "bwl_read_text",
-      "bwl_click",
-      "bwl_wait",
-      "bwl_wait_for_reply",
-      "bwl_keep_open",
-      "bwl_tab_history",
-      "bwl_mouse",
-      "bwl_type",
-      "bwl_select",
-      "bwl_navigate",
-      "bwl_scroll",
-      "bwl_screenshot",
-      "bwl_close_tab",
-      "bwl_evaluate",
-      "bwl_list_tabs",
-      "bwl_create_profile",
-      "bwl_list_profiles",
-      "bwl_delete_profile",
-      "bwl_import_cookies",
-      "bwl_element_state",
-      "bwl_upload",
-      "bwl_batch",
-      "bwl_save_page",
-      "bwl_downloads"
+      "hwl_create_tab",
+      "hwl_snapshot",
+      "hwl_read_text",
+      "hwl_click",
+      "hwl_wait",
+      "hwl_wait_for_reply",
+      "hwl_keep_open",
+      "hwl_tab_history",
+      "hwl_mouse",
+      "hwl_type",
+      "hwl_select",
+      "hwl_navigate",
+      "hwl_scroll",
+      "hwl_screenshot",
+      "hwl_close_tab",
+      "hwl_evaluate",
+      "hwl_list_tabs",
+      "hwl_create_profile",
+      "hwl_list_profiles",
+      "hwl_delete_profile",
+      "hwl_import_cookies",
+      "hwl_element_state",
+      "hwl_upload",
+      "hwl_batch",
+      "hwl_save_page",
+      "hwl_downloads"
     ]
   }
 }

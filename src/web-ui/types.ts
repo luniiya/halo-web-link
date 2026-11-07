@@ -23,7 +23,7 @@ export type State = { running: boolean; browserError?: string | null; generatedA
 export type TabRef = { session: Session; tab: Tab };
 export type ClosedEntry = TabRef & { closedAt: number; reason?: string };
 
-/** Short, readable stand-in for a full userId/tabId — not for security, just display. */
+/** Short, readable stand-in for a full userId/tabId, not for security, just display. */
 export function shortId(id: string): string {
   return id.length > 10 ? `${id.slice(0, 10)}…` : id;
 }

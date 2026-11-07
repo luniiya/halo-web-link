@@ -1,6 +1,6 @@
 # Browser-handoff backlog
 
-- [ ] Add an explicit, authenticated `bwl_attach_session` operation so a new
+- [ ] Add an explicit, authenticated `hwl_attach_session` operation so a new
   agent can resume an existing browser session by durable handoff ID instead
   of receiving a fresh anonymous `mcp-<uuid>` user ID.
 - [ ] Keep browser sessions alive when an MCP transport disconnects; make

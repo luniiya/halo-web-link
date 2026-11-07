@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 
 import { loadConfig } from "./lib/config.js";
 import { launchServer } from "./lib/launcher.js";
-// Shared tool contracts — the single source of truth also used by mcp/server.mjs.
+// Shared tool contracts, the single source of truth also used by mcp/server.mjs.
 // OpenClaw and MCP expose identical tool schemas, REST routes, auth, and response
 // shaping, so they cannot drift.
 import { TOOL_DEFS, runTool, adaptResponse } from "./lib/mcp-tool-contracts.mjs";
@@ -171,7 +171,7 @@ async function fetchApi(
   options: RequestInit = {}
 ): Promise<unknown> {
   // Forward the global access key so plugin traffic is accepted by REST servers
-  // gated with BWL_ACCESS_KEY. /health is exempt server-side, so attaching
+  // gated with HWL_ACCESS_KEY. /health is exempt server-side, so attaching
   // the header to health checks is harmless.
   const cfg = loadConfig();
   const headers: Record<string, string> = {
@@ -196,7 +196,7 @@ export default function register(api: PluginApi) {
   const baseUrl = cfg.url || `http://localhost:${port}`;
   const autoStart = cfg.autoStart !== false; // default true
   const pluginDir = getPluginDir();
-  const fallbackUserId = `bwl-${randomUUID()}`;
+  const fallbackUserId = `hwl-${randomUUID()}`;
 
   // Auto-start server if configured (default: true)
   if (autoStart) {
@@ -216,8 +216,8 @@ export default function register(api: PluginApi) {
 
   // --- Tool registration -----------------------------------------------------
   // Schemas, REST routes, auth, and response shaping come from the shared
-  // contract module (lib/mcp-tool-contracts.mjs) — the same source mcp/server.mjs
-  // imports — so the OpenClaw plugin and the MCP server behave identically and
+  // contract module (lib/mcp-tool-contracts.mjs), the same source mcp/server.mjs
+  // imports, so the OpenClaw plugin and the MCP server behave identically and
   // cannot drift. Only the userId/sessionKey source (OpenClaw ctx) differs.
   for (const def of TOOL_DEFS) {
     api.registerTool((ctx: ToolContext) => ({
@@ -241,7 +241,7 @@ export default function register(api: PluginApi) {
 
 
   api.registerCommand({
-    name: "bwl",
+    name: "hwl",
     description: "Camoufox browser server control (status, start, stop)",
     handler: async (args) => {
       const subcommand = args[0] || "status";
@@ -273,7 +273,7 @@ export default function register(api: PluginApi) {
           if (serverProcess) {
             serverProcess.kill();
             serverProcess = null;
-            api.logger?.info?.("Stopped bloom-web-link server");
+            api.logger?.info?.("Stopped halo-web-link server");
           } else {
             api.logger?.info?.("No managed server process running");
           }
@@ -287,7 +287,7 @@ export default function register(api: PluginApi) {
   // Gateway methods expose health/status to gateway clients. Gateway handlers
   // answer through respond() rather than returning a value.
   api.registerGatewayMethod(
-    "bwl.health",
+    "hwl.health",
     async ({ respond }) => {
       try {
         const health = (await fetchApi(baseUrl, "/health")) as Record<string, unknown>;
@@ -300,7 +300,7 @@ export default function register(api: PluginApi) {
   );
 
   api.registerGatewayMethod(
-    "bwl.status",
+    "hwl.status",
     async ({ respond }) => {
       const running = await checkServerRunning(baseUrl);
       respond(true, {
@@ -314,15 +314,15 @@ export default function register(api: PluginApi) {
     { scope: "operator.admin" }
   );
 
-  // Register CLI subcommands (openclaw bwl ...)
+  // Register CLI subcommands (openclaw hwl ...)
   if (api.registerCli) {
     api.registerCli(
       ({ program }) => {
-        const bwl = program
-          .command("bwl")
+        const hwl = program
+          .command("hwl")
           .description("Camoufox anti-detection browser automation");
 
-        bwl
+        hwl
           .command("status")
           .description("Show server status")
           .action(async () => {
@@ -341,13 +341,13 @@ export default function register(api: PluginApi) {
               console.log(`Camoufox server: not reachable`);
               console.log(`  URL: ${baseUrl}`);
               console.log(`  Managed: ${serverProcess !== null}`);
-              console.log(`  Hint: Run 'openclaw bwl start' to start the server`);
+              console.log(`  Hint: Run 'openclaw hwl start' to start the server`);
             }
           });
 
-        bwl
+        hwl
           .command("start")
-          .description("Start the bwl server")
+          .description("Start the hwl server")
           .action(async () => {
             if (serverProcess) {
               console.log("Camoufox server already running (managed by plugin)");
@@ -358,7 +358,7 @@ export default function register(api: PluginApi) {
               return;
             }
             try {
-              console.log(`Starting bwl server on port ${port}...`);
+              console.log(`Starting hwl server on port ${port}...`);
               serverProcess = await startServer(pluginDir, port, api.logger, cfg);
               console.log(`Camoufox server started at ${baseUrl}`);
             } catch (err) {
@@ -367,22 +367,22 @@ export default function register(api: PluginApi) {
             }
           });
 
-        bwl
+        hwl
           .command("stop")
-          .description("Stop the bwl server")
+          .description("Stop the hwl server")
           .action(async () => {
             if (serverProcess) {
               serverProcess.kill();
               serverProcess = null;
-              console.log("Stopped bwl server");
+              console.log("Stopped hwl server");
             } else {
               console.log("No managed server process running");
             }
           });
 
-        bwl
+        hwl
           .command("configure")
-          .description("Configure bwl plugin settings")
+          .description("Configure hwl plugin settings")
           .action(async () => {
             console.log("Camoufox Browser Configuration");
             console.log("================================");
@@ -396,21 +396,21 @@ export default function register(api: PluginApi) {
             console.log("");
             console.log("  plugins:");
             console.log("    entries:");
-            console.log("      bloom-web-link:");
+            console.log("      halo-web-link:");
             console.log("        enabled: true");
             console.log("        config:");
             console.log("          port: 9377");
             console.log("          autoStart: true");
             console.log("");
-            console.log("To use bwl as the ONLY browser tool, disable the built-in:");
+            console.log("To use hwl as the ONLY browser tool, disable the built-in:");
             console.log("");
             console.log("  tools:");
             console.log('    deny: ["browser"]');
             console.log("");
-            console.log("This removes OpenClaw's built-in browser tool, leaving bwl tools.");
+            console.log("This removes OpenClaw's built-in browser tool, leaving hwl tools.");
           });
 
-        bwl
+        hwl
           .command("tabs")
           .description("List active browser tabs")
           .option("--user <userId>", "Filter by user ID")
@@ -436,7 +436,7 @@ export default function register(api: PluginApi) {
             }
           });
       },
-      { commands: ["bwl"] }
+      { commands: ["hwl"] }
     );
   }
 }
