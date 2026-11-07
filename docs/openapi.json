@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "halo-web-link",
-    "version": "1.16.0",
+    "version": "2.1.0",
     "description": "Anti-detection browser automation server for AI agents. Accessibility snapshots, element refs, session isolation, cookie import, proxy rotation, and structured logs.",
     "license": {
       "name": "MIT",
@@ -45,6 +45,10 @@
       "description": "Per-user session state: cookies, teardown."
     },
     {
+      "name": "Profiles",
+      "description": "Global browser profiles with their own fingerprint, cookies and history."
+    },
+    {
       "name": "Browser",
       "description": "Global browser lifecycle (start/stop)."
     },
@@ -75,6 +79,148 @@
         "properties": {
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "named",
+              "burner"
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "lastUsedAt": {
+            "type": "number"
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "screen": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
+            }
+          },
+          "userId": {
+            "type": "string",
+            "description": "Core session id of the profile (profile:<id>)"
+          },
+          "os": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "windows",
+              "macos",
+              "linux"
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "nullable": true
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProfileSettings"
+          },
+          "browserRunning": {
+            "type": "boolean"
+          },
+          "tabs": {
+            "type": "integer"
+          }
+        }
+      },
+      "ProfileSettings": {
+        "type": "object",
+        "description": "Per-profile browser settings. Omitted fields keep their current (or default) value.",
+        "properties": {
+          "gpu": {
+            "type": "object",
+            "nullable": true,
+            "description": "WebGL vendor/renderer from GET /profiles/options; null picks a common one",
+            "properties": {
+              "vendor": {
+                "type": "string"
+              },
+              "renderer": {
+                "type": "string"
+              }
+            }
+          },
+          "cores": {
+            "type": "integer",
+            "nullable": true,
+            "description": "navigator.hardwareConcurrency; null keeps the fingerprint value"
+          },
+          "mics": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "speakers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "webcams": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "voices": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "none"
+            ],
+            "description": "auto lists the speech voices that OS ships"
+          },
+          "doNotTrack": {
+            "type": "boolean"
+          },
+          "globalPrivacyControl": {
+            "type": "boolean"
+          },
+          "webrtc": {
+            "type": "string",
+            "enum": [
+              "real",
+              "block"
+            ]
+          },
+          "geoip": {
+            "type": "boolean",
+            "description": "Timezone and geolocation from the public IP"
+          },
+          "humanize": {
+            "type": "boolean",
+            "description": "Human-like cursor movement"
+          },
+          "drift": {
+            "type": "boolean",
+            "description": "Slow, realistic changes over time (devices plugged in, window not always maximized)"
           }
         }
       }
@@ -405,7 +551,7 @@
           "Tabs"
         ],
         "summary": "Create a new tab",
-        "description": "Creates a tab in the given session. Optionally navigates to an initial URL.",
+        "description": "Creates a tab in the given session. Optionally navigates to an initial URL. A navigation timeout preserves the tab and returns navigationOk false with its tabId and navigation_timeout code.",
         "requestBody": {
           "required": true,
           "content": {
@@ -436,6 +582,10 @@
                   "trace": {
                     "type": "boolean",
                     "description": "Enable Playwright tracing for this session (screenshots, DOM snapshots, network). Must be set on first tab creation; cannot be added to an existing session."
+                  },
+                  "profile": {
+                    "type": "string",
+                    "description": "Global profile (name or id) to open the tab in. \"burner\" creates a new burner profile. Defaults to the \"main\" profile."
                   }
                 }
               }
@@ -507,7 +657,7 @@
           "Tabs"
         ],
         "summary": "List open tabs",
-        "description": "Returns all tabs for a given userId.",
+        "description": "Returns all tabs for a given userId, including lifetime protection status and any retained navigationError.",
         "parameters": [
           {
             "name": "userId",
@@ -975,6 +1125,177 @@
         }
       }
     },
+    "/tabs/{tabId}/lifetime": {
+      "post": {
+        "tags": [
+          "Tabs"
+        ],
+        "summary": "Protect a tab from automatic cleanup",
+        "description": "Keep open until explicitly unpinned, or renew a 20-second dashboard viewing lease. Does not navigate or read page content.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "keepOpen": {
+                    "type": "boolean"
+                  },
+                  "viewing": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tab lifetime and protection status."
+          },
+          "400": {
+            "description": "Invalid request."
+          },
+          "404": {
+            "description": "Tab not found."
+          }
+        }
+      }
+    },
+    "/tabs/{tabId}/wait-reply": {
+      "post": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Wait for new chat messages without repeated snapshots",
+        "description": "Select incoming message elements with messageSelector. First call establishes a baseline; timeout 0 returns a cursor immediately. Reuse cursor and selectors to receive only new messages, including those arriving between calls. Optional typingSelector reports typing, not_typing, or unknown. The wait protects the tab, settles streaming text, and supports cancellation through connection closure. Maximum 55 seconds per call; repeat with the returned cursor for longer waits.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId",
+                  "messageSelector"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "messageSelector": {
+                    "type": "string"
+                  },
+                  "typingSelector": {
+                    "type": "string"
+                  },
+                  "cursor": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "timeout": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 55000,
+                    "default": 45000
+                  },
+                  "quietMs": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5000,
+                    "default": 700
+                  },
+                  "waitForTyping": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New messages with cursor",
+            "typing state and completion reason.": null
+          },
+          "400": {
+            "description": "Invalid selectors or parameters."
+          },
+          "404": {
+            "description": "Tab not found."
+          },
+          "409": {
+            "description": "Another reply wait is active."
+          }
+        }
+      }
+    },
+    "/tabs/{tabId}/history": {
+      "get": {
+        "tags": [
+          "Tabs"
+        ],
+        "summary": "Read a closed tab's locally saved recovery information",
+        "parameters": [
+          {
+            "name": "tabId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved URL",
+            "closure reason and last explicitly read text.": null
+          },
+          "400": {
+            "description": "Missing userId."
+          },
+          "404": {
+            "description": "No saved history."
+          }
+        }
+      }
+    },
     "/tabs/{tabId}/click": {
       "post": {
         "tags": [
@@ -1278,7 +1599,7 @@
           "Interaction"
         ],
         "summary": "Attach a file to an upload control",
-        "description": "Attaches files from the configured upload directory without going through the native OS file dialog. Set HWL_UPLOADS_DIR to a directory that contains the files (default: ~/.hwl/uploads). Two strategies are tried in order: (1) if an <input type=\"file\"> is already present, call Playwright setInputFiles on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger element (ref or selector) via keyboard (focus + Enter) then a forced click as fallback, and call setFiles on the resulting chooser. Each path must be an absolute path that resolves inside the configured upload directory.\n",
+        "description": "Attaches a file without going through the native OS file dialog. The file comes from exactly one source: `path` (inside HWL_UPLOADS_DIR, default ~/.hwl/uploads), `url` (fetched by the server, so the agent never has to inline large files), or `base64` + `filename`. `url` and `base64` files stay in memory and are capped at 25 MB. Strategies, in order: (0) when a ref/selector is given, use the file input it is, labels, contains, or shares a drop zone/section with; (1) if the page has a single <input type=\"file\"> (or no trigger was given), set files on it directly (works for hidden inputs); (2) otherwise arm a filechooser listener, activate the trigger via keyboard (focus + Enter) then a forced click, and answer the chooser or a freshly mounted panel input; (3) as a last resort, drop the file on the trigger with a synthetic drag-and-drop. `mode: \"drop\"` skips straight to (3).\n",
         "parameters": [
           {
             "name": "tabId",
@@ -1296,12 +1617,40 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "userId",
-                  "path"
+                  "userId"
                 ],
                 "properties": {
                   "userId": {
                     "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "http(s) URL the server downloads the file from (e.g. a LAN file server)."
+                  },
+                  "base64": {
+                    "type": "string",
+                    "description": "File contents, base64 (a data: URL prefix is accepted). Requires filename."
+                  },
+                  "filename": {
+                    "type": "string",
+                    "description": "File name the page sees. Required with base64; overrides the name derived from url."
+                  },
+                  "mimeType": {
+                    "type": "string",
+                    "description": "MIME type the page sees. Defaults to the url's Content-Type, else application/octet-stream."
+                  },
+                  "nth": {
+                    "type": "integer",
+                    "description": "0-based match index when selector matches several elements."
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "drop"
+                    ],
+                    "default": "auto",
+                    "description": "drop dispatches a synthetic drag-and-drop on the ref/selector instead of using a file input."
                   },
                   "path": {
                     "description": "Absolute path, or array of paths, that resolves within HWL_UPLOADS_DIR.",
@@ -1337,13 +1686,19 @@
         },
         "responses": {
           "200": {
-            "description": "File(s) attached."
+            "description": "File(s) attached. Body: { ok, attached, files: [{ name, size, mimeType }], via: target_input|direct_input|panel_input|filechooser|drop }."
           },
           "400": {
-            "description": "Bad request (missing path/userId; non-regular file; or a path that is missing or outside the configured upload directory)."
+            "description": "Bad request (missing userId or file source; more than one source; base64 without filename; non-regular file; or a path that is missing or outside the configured upload directory)."
           },
           "404": {
             "description": "Tab not found."
+          },
+          "413": {
+            "description": "url or base64 file larger than 25 MB."
+          },
+          "502": {
+            "description": "Fetching url failed."
           }
         }
       }
@@ -2056,6 +2411,97 @@
           },
           "415": {
             "description": "Current resource is not a PDF."
+          }
+        }
+      }
+    },
+    "/tabs/{tabId}/save-page": {
+      "post": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Save the current page or document (like Ctrl+S)",
+        "description": "A document tab (PDF, image, CSV, ...) is saved as its original bytes, fetched with the tab's cookies.\nAn HTML page is saved as its current DOM, including changes made by scripts. The file becomes one of\nthe tab's downloads (GET /tabs/{tabId}/downloads).\n",
+        "parameters": [
+          {
+            "name": "tabId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved download artifact."
+          },
+          "404": {
+            "description": "Tab not found."
+          },
+          "413": {
+            "description": "Document exceeds the size limit."
+          }
+        }
+      }
+    },
+    "/tabs/{tabId}/downloads/{downloadId}/file": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Download one captured file",
+        "description": "Streams the raw file a tab downloaded, so an agent can save it with curl.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "downloadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, as an attachment."
+          },
+          "404": {
+            "description": "Unknown tab or download, or the download failed."
           }
         }
       }
@@ -3020,6 +3466,337 @@
         }
       }
     },
+    "/profiles": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "List browser profiles",
+        "description": "Global profiles, each with its own Camoufox fingerprint, cookies, storage and history. Burners are wiped after burnerTtlDays without use.",
+        "responses": {
+          "200": {
+            "description": "Profiles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profiles": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Profile"
+                      }
+                    },
+                    "burnerTtlDays": {
+                      "type": "number"
+                    },
+                    "maxProfileBrowsers": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Create a browser profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Required unless burner is true"
+                  },
+                  "burner": {
+                    "type": "boolean"
+                  },
+                  "screen": {
+                    "type": "string",
+                    "description": "Screen size as WIDTHxHEIGHT (default 1920x1080)"
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "windows",
+                      "macos",
+                      "linux"
+                    ],
+                    "description": "Spoofed operating system (default: the host OS)"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "description": "Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)"
+                  },
+                  "settings": {
+                    "$ref": "#/components/schemas/ProfileSettings"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name."
+          },
+          "409": {
+            "description": "Name already in use."
+          }
+        }
+      }
+    },
+    "/profiles/{profile}/fingerprint": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Give a profile a new fingerprint",
+        "description": "Closes the profile's tabs and browser and generates a new machine identity (user agent, screen, noise). Cookies and storage are kept.",
+        "parameters": [
+          {
+            "name": "profile",
+            "in": "path",
+            "required": true,
+            "description": "Profile name or id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "screen": {
+                    "type": "string",
+                    "description": "Screen size as WIDTHxHEIGHT (default 1920x1080)"
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "windows",
+                      "macos",
+                      "linux"
+                    ],
+                    "description": "Spoofed operating system (default: the host OS)"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "description": "Browser locale such as fr-FR (default: follows the proxy or HWL_LOCALE)"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA timezone such as Europe/Paris (default: follows the proxy or HWL_TIMEZONE)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The profile with its new fingerprint."
+          },
+          "400": {
+            "description": "Invalid screen size."
+          },
+          "404": {
+            "description": "Unknown profile."
+          }
+        }
+      }
+    },
+    "/profiles/{profile}": {
+      "patch": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Change a profile's settings",
+        "description": "Keeps the fingerprint (user agent, fonts, noise) and changes the rest. A different os needs a new fingerprint, so it regenerates one. A running browser is restarted to apply the change; cookies and storage are kept.",
+        "parameters": [
+          {
+            "name": "profile",
+            "in": "path",
+            "required": true,
+            "description": "Profile name or id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "screen": {
+                    "type": "string"
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "windows",
+                      "macos",
+                      "linux",
+                      ""
+                    ]
+                  },
+                  "locale": {
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "settings": {
+                    "$ref": "#/components/schemas/ProfileSettings"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile."
+          },
+          "400": {
+            "description": "Invalid setting."
+          },
+          "404": {
+            "description": "Unknown profile."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Move a browser profile to the trash",
+        "description": "Closes its tabs and browser and hides the profile. Its fingerprint, storage and history are kept for 30 days, so it can be restored with POST /profiles/{profile}/restore; after that they are erased.",
+        "parameters": [
+          {
+            "name": "profile",
+            "in": "path",
+            "required": true,
+            "description": "Profile name or id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trashed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "string"
+                    },
+                    "purgeAt": {
+                      "type": "integer",
+                      "description": "When the profile's data is erased (ms since epoch)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown profile."
+          },
+          "409": {
+            "description": "The default \"main\" profile cannot be deleted."
+          }
+        }
+      }
+    },
+    "/profiles/options": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Choices for profile settings",
+        "description": "GPUs per OS, CPU core counts and the other enumerated profile settings.",
+        "responses": {
+          "200": {
+            "description": "The options."
+          }
+        }
+      }
+    },
+    "/profiles/trash": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "List trashed profiles",
+        "description": "Deleted profiles that can still be restored, each with the time (purgeAt) its data is erased.",
+        "responses": {
+          "200": {
+            "description": "The trashed profiles."
+          }
+        }
+      }
+    },
+    "/profiles/{profile}/restore": {
+      "post": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Restore a trashed profile",
+        "parameters": [
+          {
+            "name": "profile",
+            "in": "path",
+            "required": true,
+            "description": "Profile name or id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The restored profile."
+          },
+          "404": {
+            "description": "No such profile in the trash."
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -3067,7 +3844,7 @@
           "Browser"
         ],
         "summary": "Get dashboard browser state",
-        "description": "Returns all active sessions and tabs for the local container dashboard. This route is protected by the global access key when configured.",
+        "description": "Returns active sessions with per-tab lifetime and navigation errors, plus persistent closedTabs metadata (without saved text). This route is protected by the global access key when configured.",
         "responses": {
           "200": {
             "description": "Current browser, session, and tab state.",
@@ -3082,6 +3859,36 @@
                     "generatedAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "closedTabs": {
+                      "type": "array",
+                      "description": "Locally saved closed-tab metadata, without text.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "tabId": {
+                            "type": "string"
+                          },
+                          "sessionKey": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "closedAt": {
+                            "type": "number"
+                          }
+                        }
+                      }
                     },
                     "sessions": {
                       "type": "array",
@@ -3111,6 +3918,28 @@
                                 },
                                 "title": {
                                   "type": "string"
+                                },
+                                "navigationError": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "lifetime": {
+                                  "type": "object",
+                                  "properties": {
+                                    "keepOpen": {
+                                      "type": "boolean"
+                                    },
+                                    "protected": {
+                                      "type": "boolean"
+                                    },
+                                    "expiresAt": {
+                                      "type": "number",
+                                      "nullable": true
+                                    },
+                                    "idleTimeoutMs": {
+                                      "type": "number"
+                                    }
+                                  }
                                 }
                               }
                             }

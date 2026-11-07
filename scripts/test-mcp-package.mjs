@@ -19,8 +19,10 @@ let tarball;
 
 try {
   const { stdout } = await execFile('npm', ['pack', '--json'], { cwd: MCP_DIR });
-  const [{ filename }] = JSON.parse(stdout);
-  tarball = join(MCP_DIR, filename);
+  const packResult = JSON.parse(stdout);
+  const packInfo = Array.isArray(packResult) ? packResult[0] : Object.values(packResult)[0];
+  if (!packInfo?.filename) throw new Error('npm pack did not return a filename');
+  tarball = join(MCP_DIR, packInfo.filename);
 
   const installDir = join(testDir, 'install');
   await mkdir(installDir);

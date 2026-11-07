@@ -83,7 +83,7 @@ docker run -d --name hwl --restart unless-stopped --shm-size=2gb \
   ghcr.io/luniiya/halo-web-link:latest
 ```
 
-Pin a version instead of `latest` for reproducible setups, e.g. `ghcr.io/luniiya/halo-web-link:2.0.0`. To update: `docker pull ghcr.io/luniiya/halo-web-link:latest`, then `docker rm -f hwl` and run the command again. Your data stays in the `hwl-data` volume.
+Pin a version instead of `latest` for reproducible setups, e.g. `ghcr.io/luniiya/halo-web-link:2.1.0`. To update: `docker pull ghcr.io/luniiya/halo-web-link:latest`, then `docker rm -f hwl` and run the command again. Your data stays in the `hwl-data` volume.
 
 ### Option 2: clone and build
 
@@ -105,7 +105,7 @@ Everything binds to `127.0.0.1` only. Browser data (cookies, profiles) is kept i
 
 ## Connect an agent
 
-1. Open the dashboard at `http://localhost:6080`.
+1. Open your hwl dashboard.
 2. Pick the browser profile the agent should use, then press **Connect your agent**. This copies a ready-made setup prompt to your clipboard (the eye icon next to it previews the prompt).
 3. Paste it into a chat with your agent. It will figure out the rest: adding the MCP server, picking up its profile, and starting to browse.
 

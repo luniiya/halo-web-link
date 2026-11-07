@@ -1,4 +1,17 @@
-import { windowSnapshot, MAX_SNAPSHOT_CHARS, SNAPSHOT_TAIL_CHARS } from '../../lib/snapshot.js';
+import { windowSnapshot, appendDomClickableRefs, MAX_SNAPSHOT_CHARS, SNAPSHOT_TAIL_CHARS } from '../../lib/snapshot.js';
+
+describe('appendDomClickableRefs', () => {
+  test('appends only role-less DOM fallback refs', () => {
+    const refs = new Map([
+      ['e1', { role: 'link', name: 'Accessible link', selector: '[data-hwl-ref="e1"]' }],
+      ['e2', { name: 'Role-less control', selector: '[data-hwl-ref="e2"]' }],
+    ]);
+    const result = appendDomClickableRefs('- link "Accessible link" [e1]', refs);
+    expect(result).toContain('Accessible link');
+    expect(result).toContain('- clickable (no ARIA role) "Role-less control" [e2]');
+    expect(result.match(/Accessible link/g)).toHaveLength(1);
+  });
+});
 
 describe('windowSnapshot', () => {
   const CONTENT_BUDGET = MAX_SNAPSHOT_CHARS - SNAPSHOT_TAIL_CHARS - 200;

@@ -1,88 +1,28 @@
-/**
- * Tests for POST /tabs/:tabId/viewport endpoint validation and behavior.
- */
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
+import { resizeViewport } from '../../lib/viewport.js';
 
-// ============================================================================
-// Validation logic (mirrors the guard in server.js)
-// ============================================================================
+describe('resizeViewport', () => {
+  test('returns when the browser resized but Playwright stays pending', async () => {
+    const page = {
+      setViewportSize: jest.fn(() => new Promise(() => {})),
+      evaluate: jest.fn(async () => ({ width: 375, height: 667 })),
+      waitForTimeout: jest.fn(),
+    };
 
-function validateViewport(width, height) {
-  if (!Number.isFinite(width) || !Number.isFinite(height) ||
-      width < 100 || height < 100 || width > 4000 || height > 4000) {
-    return { error: 'width and height required (100..4000 px)' };
-  }
-  return null;
-}
+    await resizeViewport(page, 375, 667);
 
-describe('viewport validation', () => {
-  test('rejects missing width', () => {
-    expect(validateViewport(undefined, 720)).not.toBeNull();
+    expect(page.setViewportSize).toHaveBeenCalledWith({ width: 375, height: 667 });
+    expect(page.evaluate).toHaveBeenCalled();
   });
 
-  test('rejects missing height', () => {
-    expect(validateViewport(1280, undefined)).not.toBeNull();
-  });
+  test('fails when the requested dimensions are never reached', async () => {
+    const page = {
+      setViewportSize: jest.fn(() => new Promise(() => {})),
+      evaluate: jest.fn(async () => ({ width: 800, height: 600 })),
+      waitForTimeout: jest.fn(),
+    };
 
-  test('rejects string width', () => {
-    expect(validateViewport('1280', 720)).not.toBeNull();
-  });
-
-  test('rejects string height', () => {
-    expect(validateViewport(1280, '720')).not.toBeNull();
-  });
-
-  test('rejects width below 100', () => {
-    expect(validateViewport(99, 720)).not.toBeNull();
-  });
-
-  test('rejects height below 100', () => {
-    expect(validateViewport(1280, 99)).not.toBeNull();
-  });
-
-  test('rejects width above 4000', () => {
-    expect(validateViewport(4001, 720)).not.toBeNull();
-  });
-
-  test('rejects height above 4000', () => {
-    expect(validateViewport(1280, 4001)).not.toBeNull();
-  });
-
-  test('accepts minimum values (100x100)', () => {
-    expect(validateViewport(100, 100)).toBeNull();
-  });
-
-  test('accepts maximum values (4000x4000)', () => {
-    expect(validateViewport(4000, 4000)).toBeNull();
-  });
-
-  test('accepts standard desktop viewport (1280x720)', () => {
-    expect(validateViewport(1280, 720)).toBeNull();
-  });
-
-  test('accepts mobile viewport (375x667)', () => {
-    expect(validateViewport(375, 667)).toBeNull();
-  });
-
-  test('accepts tablet viewport (768x1024)', () => {
-    expect(validateViewport(768, 1024)).toBeNull();
-  });
-
-  test('rejects NaN', () => {
-    expect(validateViewport(NaN, 720)).not.toBeNull();
-  });
-
-  test('rejects Infinity', () => {
-    expect(validateViewport(Infinity, 720)).not.toBeNull();
-    expect(validateViewport(1280, -Infinity)).not.toBeNull();
-  });
-
-  test('rejects null', () => {
-    expect(validateViewport(null, null)).not.toBeNull();
-  });
-
-  test('accepts floats (will be rounded by endpoint)', () => {
-    // The endpoint uses Math.round(), so 1280.5 → 1281
-    expect(validateViewport(1280.5, 720.9)).toBeNull();
+    await expect(resizeViewport(page, 375, 667, { timeoutMs: 0 }))
+      .rejects.toThrow('Viewport resize timed out');
   });
 });

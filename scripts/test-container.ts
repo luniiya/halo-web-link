@@ -6,7 +6,7 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 const build = await Bun.build({
-  entrypoints: [new URL("../src/web-ui/client.ts", import.meta.url).pathname],
+  entrypoints: [new URL("../src/web-ui/client.tsx", import.meta.url).pathname],
   target: "browser",
 });
 assert(build.success && build.outputs.length === 1, "Web UI client did not bundle");
@@ -47,6 +47,6 @@ const toolsResponse = await handleMcp(new Request("http://localhost/mcp", {
   body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
 }));
 const toolsPayload = await toolsResponse.json() as { result?: { tools?: unknown[] } };
-assert(toolsPayload.result?.tools?.length === 13, "HTTP MCP did not expose all 13 tools");
+assert(toolsPayload.result?.tools?.length === 26, "HTTP MCP did not expose all 26 tools");
 
-console.log("Container smoke passed: Web UI bundled; HTTP MCP initialized with 13 tools.");
+console.log("Container smoke passed: Web UI bundled; HTTP MCP initialized with 26 tools.");

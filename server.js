@@ -19,7 +19,8 @@ import { normalizePlaywrightProxy, createProxyPool, buildProxyUrl } from './lib/
 import { createFlyHelpers } from './lib/fly.js';
 import { createPluginEvents, loadPlugins, typeEventPayload } from './lib/plugins.js';
 import { requireAuth, accessKeyMiddleware, timingSafeCompare as _timingSafeCompare, isLoopbackAddress as _isLoopbackAddress } from './lib/auth.js';
-import { windowSnapshot } from './lib/snapshot.js';
+import { windowSnapshot, appendDomClickableRefs } from './lib/snapshot.js';
+import { resizeViewport } from './lib/viewport.js';
 import { extractPageStructure, attachStructureRefs } from './lib/page-structure.js';
 import {
   MAX_DOWNLOAD_INLINE_BYTES,
@@ -4067,13 +4068,7 @@ app.get('/tabs/:tabId/snapshot', async (req, res) => {
       // the line-matching annotation above can't place a [eN] marker next to
       // them in the tree -- list them separately instead of leaving them
       // resolvable-but-invisible to whoever reads this snapshot.
-      const domClickableRefs = [...tabState.refs].filter(([, info]) => info.selector);
-      if (domClickableRefs.length > 0) {
-        const extra = domClickableRefs
-          .map(([refId, info]) => `- clickable (no ARIA role) "${info.name}" [${refId}]`)
-          .join('\n');
-        annotatedYaml = annotatedYaml ? `${annotatedYaml}\n${extra}` : extra;
-      }
+      annotatedYaml = appendDomClickableRefs(annotatedYaml, tabState.refs);
 
       tabState.lastSnapshot = annotatedYaml;
       tabState.lastStructure = structure;
@@ -6058,8 +6053,7 @@ app.post('/tabs/:tabId/viewport', async (req, res) => {
     const { tabState } = found;
     tabState.toolCalls++; tabState.consecutiveTimeouts = 0; tabState.consecutiveFailures = 0;
 
-    await tabState.page.setViewportSize({ width: Math.round(width), height: Math.round(height) });
-    await tabState.page.waitForTimeout(150);
+    await resizeViewport(tabState.page, Math.round(width), Math.round(height));
 
     pluginEvents.emit('tab:viewport', { userId, tabId: req.params.tabId, width, height });
     res.json({ ok: true, width: Math.round(width), height: Math.round(height) });

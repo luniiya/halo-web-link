@@ -2,7 +2,7 @@
   "id": "halo-web-link",
   "name": "Halo Web Link",
   "description": "Anti-detection browser automation for AI agents using Camoufox (Firefox-based)",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "configSchema": {
     "type": "object",
     "properties": {

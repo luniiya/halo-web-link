@@ -1,7 +1,7 @@
 {
   "id": "halo-web-link",
   "name": "Halo Web Link",
-  "version": "1.6.0",
+  "version": "2.1.0",
   "newPageTimeoutMs": 10000,
   "interactive": { "mode": "off" },
   "plugins": {
